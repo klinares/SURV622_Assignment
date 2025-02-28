@@ -1,0 +1,96 @@
+---
+title: "Assignment 2"
+author: Group 2
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+embed-resources: true
+editor: visual
+execute:
+  warning: false
+  message: false
+  error: false
+  tidy: true
+format: pdf
+theme: spacelab
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+# install.packages("devtools")
+# devtools::install_github('ivan-rivera/RedditExtractor')
+library(RedditExtractoR)
+```
+
+# Hitting the Reddit API
+
+1.  Use the Reddit API to “listen” to and download a corpus of posts using the RedditExtractoR package in R
+
+Define
+
+```{r find_thread_url, message=FALSE, warning=FALSE}
+# list of keywrods to try
+topic_list <- c("DOGE", "Elon Musk", "Department of Government Efficiency", "wasteful spending", "government waste", "government fraud", "drain the swamp",  "reduction in force")
+            
+# query each keyword through the api
+topic_urls <-  map_dfr(topic_list, function(x){
+  find_thread_urls(keywords=x, period='day') 
+})  |> tibble()
+
+dim(topic_urls)
+
+```
+
+Clean the dataframe to prepare for descriptive analysis
+
+-   Convert date str to date class
+
+-   Filtering
+
+    -   If text field is missing, it is a post with no text and only a picture. Remove it.
+
+    -   Keep events after a set start date, presidential election
+
+    -   remove posts that start with "https" as these are just links with no text.
+
+```{r}
+test <- topic_urls |> 
+  # create date string to date object
+  mutate(date_utc = ymd(date_utc),
+         text = na_if(text, "") ) |> 
+  # if text is NA, it's a picture or video, drop it 
+  filter(!is.na(text),
+         date_utc > "2024-11-05", ,
+         !str_starts(text, "https")
+         )
+```
+
+### Get threads from URLs
+
+```{r get_thread_content}
+topic_content = get_thread_content(topic_urls$url)
+
+names(topic_content)
+
+dim(topic_content$threads)
+head(topic_content$threads)
+```
+
+The 'threads' data frame gives some more information on the posts: author, number of upvotes and downvotes, ratio of upvotes, number of awards received, golds, and cross-posts.
+
+```{r}
+dim(topic_content$comments)
+head(topic_content$comments)
+```
+
+The 'comments' data frame gives comments on the main post. Many population Reddit posts contain many layers of comments. The RedditExtractoR does not give this information (although it is available on the Reddit API).
+
+Lastly, we can search for subreddits based on a keyword using the 'find_subreddits' function.
+
+```{r find_subreddits}
+topic_subreddits = find_subreddits('reduction in force')
+head(topic_subreddits)
+dim(topic_subreddits)
+```
+
+# 
