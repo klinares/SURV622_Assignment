@@ -53,6 +53,8 @@ Clean the dataframe to prepare for descriptive analysis
 
     -   remove posts that start with "https" as these are just links with no text.
 
+    -   DOGEcoin is a cryptocurrency, and we need to filter out any posts that are unrelated to our topic of interest.
+
 ```{r}
 test <- topic_urls |> 
   # create date string to date object
@@ -61,7 +63,8 @@ test <- topic_urls |>
   # if text is NA, it's a picture or video, drop it 
   filter(!is.na(text),
          date_utc > "2024-11-05", ,
-         !str_starts(text, "https")
+         !str_starts(text, "https"),
+         !str_detect(text, "crypto|coin")
          )
 ```
 
