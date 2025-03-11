@@ -235,6 +235,20 @@ reddit_comments <- map(reddit_content, function(x){
 
 ```
 
+The comments are still missing subreddit and keyword search information. We will join this information from the reddit_clean data.
+
+```{r}
+reddit_comments <- reddit_comments |> 
+  left_join(
+    # select needed variables
+    reddit_clean |> 
+      select(url, subreddit, search_term),
+    relationship = "many-to-many"
+  )
+
+glimpse(reddit_comments)
+```
+
 We want to do some additional cleaning to the posts dataset. Ideally, we want to remove empty or short text.
 
 ```{r}
