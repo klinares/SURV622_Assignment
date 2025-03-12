@@ -17,7 +17,6 @@ theme: spacelab
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)
-library(readxl)
 library(writexl)
 # install.packages("devtools")
 # devtools::install_github('ivan-rivera/RedditExtractor')
@@ -30,7 +29,7 @@ library(RedditExtractoR)
 
 -   For this work, we focus on the topic of **Department of Government Efficiency and the Federal Workforce** as of the new US administration in early January of this year. This topic can help examine DOGE's impact on government employees by exploring perceptions and approval of:
 
-    -   The effects of remove work policies.
+    -   The effects of remote work policies.
 
     -   Changes in job security.
 
@@ -141,7 +140,7 @@ replicate(n=num_days,
 Read in the full dataset to begin the cleaning process.
 
 ```{r}
-reddit_unclean <- readRDS("D:/repos/SURV622_Assignment/data/posts_data.RDS")
+reddit_unclean <- readRDS("~/repos/SURV622_Assignment/data/posts_data.RDS")
 glimpse(reddit_unclean)
 ```
 

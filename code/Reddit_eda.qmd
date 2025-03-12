@@ -1,0 +1,99 @@
+---
+title: "Assignment 2"
+author: Group 2
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+embed-resources: true
+editor: visual
+execute:
+  warning: false
+  message: false
+  error: false
+  tidy: true
+format: pdf
+theme: spacelab
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(knitr)
+library(fedmatch)
+library(tidyverse)
+library(readxl)
+```
+
+# We will explore the data we scraped to determine next steps for analysis.
+
+1.  Read in data from github, and tidy it to continue processing.
+
+```{r}
+# posts data
+reddit_posts <- read_xlsx(
+  "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx") |> 
+  mutate(date_utc = ymd(date_utc)) |> 
+  # remove variables not needed
+  select(-timestamp)
+
+
+# comments data
+reddit_comment <- read_xlsx(
+  "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx") |> 
+    mutate(date_utc = ymd(date_utc)) |> 
+  # great unique post id
+  arrange(date_utc) |> 
+  group_by(url) |> 
+  mutate(post_id = cur_group_id()) |> 
+  ungroup() |> 
+  # remove variables not needed
+  select(-author, -timestamp, -comment_id) 
+
+
+# id url group IDs to the posts data
+reddit_posts_2 <- reddit_posts |> 
+  semi_join(reddit_comment |> select(url, post_id)) 
+
+```
+
+### The strings we will be processing sometimes have special characters, numbers, brackets. We need to clean these string for processing.
+
+-   We can use the fedmatch::clean_strings() function to tidy up the text. The following is an example of what will be cleaned.
+
+```{r}
+# print example of posts
+reddit_posts |> 
+  slice(10:15) |> 
+  select(text) 
+
+# clean posts
+reddit_posts |> 
+  slice(10:15) |> 
+  mutate(text = clean_strings(text)) |> 
+  select(text) 
+
+
+```
+
+-   Clean posts and comment strings.
+
+```{r}
+reddit_posts <- reddit_posts |> 
+  mutate(text = clean_strings(text))
+
+reddit_comment <- reddit_comment |> 
+  mutate(comment = clean_strings(comment))
+
+reddit_posts_2 <- reddit_posts_2 |> 
+  mutate(text=clean_strings(text))
+```
+
+\
+
+### We can now begin to explore the data. First we explore the posts.
+
+```{r, results = 'asis'}
+
+  reddit_posts |>
+  slice(364) |> 
+  pull(text) 
+
+```
