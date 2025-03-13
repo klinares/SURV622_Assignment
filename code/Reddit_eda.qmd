@@ -20,6 +20,7 @@ library(knitr)
 library(fedmatch)
 library(tidyverse)
 library(readxl)
+library(tidytext)
 ```
 
 # We will explore the data we scraped to determine next steps for analysis.
@@ -29,7 +30,8 @@ library(readxl)
 ```{r}
 # posts data
 reddit_posts <- read_xlsx(
-  "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx") |> 
+  # "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx") |> path for Kevin
+  "~/Desktop/UMICH/SURV622_Assignment/data/posts_data_clean.xlsx") |> # path for Felix
   mutate(date_utc = ymd(date_utc)) |> 
   # remove variables not needed
   select(-timestamp)
@@ -37,7 +39,8 @@ reddit_posts <- read_xlsx(
 
 # comments data
 reddit_comment <- read_xlsx(
-  "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx") |> 
+  # "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx") |> Kevin's path
+  "~/Desktop/UMICH/SURV622_Assignment/data/comments_data_clean.xlsx") |> # Felix's path
     mutate(date_utc = ymd(date_utc)) |> 
   # great unique post id
   arrange(date_utc) |> 
@@ -97,3 +100,116 @@ reddit_posts_2 <- reddit_posts_2 |>
   pull(text) 
 
 ```
+
+How many posts were collected in total and by day? How many posts after data cleaning? Is there a pattern with respect to the time of day or day of week when posts were created?
+```{r}
+# number of total posts
+totalposts <- reddit_posts %>%
+  summarize(
+    TotalPosts = n()
+  )
+knitr::kable(totalposts)
+
+# number of posts by day
+byday <- reddit_posts %>%
+  group_by(date_utc) %>%
+  summarize(
+    total = n()
+  )
+
+# plot
+ggplot(byday, aes(x = date_utc, y = total)) + 
+  geom_point(color = "blue", size = 3) +  # Larger points for visibility
+  geom_line(color = "steelblue", linewidth = 1) +  # Thicker line for clarity
+  labs(
+    title = "Total Number of Posts per Day",
+    x = "Day",
+    y = "Total Number of Posts"
+  ) +
+  theme_minimal()
+  
+```
+
+Is there a relationship between events and frequency of tweets?
+
+The two peaks in our graph can potentially be attributed to these two major news stories on those days. On March 5, Elon talked about how he wishes to "save Western civilization from empathy". On March 6, President Trump was reported to further limit Elon Musk's authority amid backlash to DOGE cuts. These two events may have had a major impact in the number of Reddit posts related to DOGE and Elon.
+
+What are the words in the set of posts you have assembled that appear most frequently? 
+```{r}
+# tokenize words to count frequencies for reddit posts
+posts_word_counts <- reddit_posts |>
+  select(title, text) |>
+  pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Posts (Including Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+
+# tokenize words to count frequencies for reddit comments
+comments_word_counts <- reddit_comment |>
+  select(comment) |>
+  pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "lightgreen") +  # Removed extra parentheses
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Comments (Including Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+```
+
+The above graphs show the most frequent words in both reddit posts and their comments. Most of these are stopwords, therefore we will proceed to remove these to get a better idea of what people are really discussing.
+
+How does this change if you exclude “stop words” such as “a,” “an,” “the,” “is,” and others that are common in English sentences but are generally not informative?
+```{r}
+# tokenize words to count frequencies for reddit posts removing stop words
+posts_word_counts <- reddit_posts |>
+  select(title, text) |>
+  pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  anti_join(stop_words, by = "word") |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Posts (Removing Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+
+# tokenize words to count frequencies for Reddit comments, removing stop words
+comments_word_counts <- reddit_comment |>
+  select(comment) |>
+  pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  anti_join(stop_words, by = "word") |>
+  count(word, sort = TRUE) |>
+  slice_max(order_by = n, n = 50)
+
+# plot
+ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "lightgreen") +  # Removed extra parentheses
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Comments (Removing Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+```
+
+The above graphs show the most frequent words used in both Reddit posts and their comment sections. We see that most of these are directly related to our topic, with mentions of the President, DOGE, the federal government and RIF. 
