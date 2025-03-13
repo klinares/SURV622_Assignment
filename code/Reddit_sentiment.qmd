@@ -30,11 +30,11 @@ Read in data from github, and tidy it to continue processing.
 ```{r}
 
 reddit_posts <- read_xlsx(
-  "~/repos/repos/SURV622_Assignment/data/posts_data_clean.xlsx") 
+  "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx") 
 
 # comments data
 reddit_comment <- read_xlsx(
-  "~/repos/repos/SURV622_Assignment/data/comments_data_clean.xlsx") 
+  "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx") 
 
 ```
 
@@ -74,22 +74,48 @@ reddit_comment_new <- reddit_comment |>
 ```
 
 ```{r}
- reddit_comment_new |> count(label)
-```
-
-```{r}
  reddit_posts_new <- reddit_posts |> mutate(label = ifelse(is.na(text), NA, sentiment_score_fun(text)))
 ```
 
-```{r}
- reddit_posts_new |> count(label)
-```
+Add new column for hand coding (dis)approval
 
 ```{r}
 # write posts data
-writexl::write_xlsx(reddit_posts_new, "~/repos/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
+write_xlsx(reddit_posts_new, "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
 
 # write comments data
-writexl::write_xlsx(reddit_comment_new, "~/repos//repos/SURV622_Assignment/data/comments_data_clean.xlsx")
+write_xlsx(reddit_comment_new, "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx")
+
+```
+
+Separate out data for hand coding based on positive and negative scores for keyword searches rif, reduction in force, and fork in the road to concentrate comments on the topic of federal layoffs. Sample 400 comments without replacement from the negative and positive coded comments.
+
+```{r}
+sample_comments_dat <- reddit_comment |> 
+  filter(search_term %in% c("rif", "reduction in force", "fork in the road"),
+         label %in% c("positive", "negative")) |> 
+  #sample_n(size=400) |> 
+  mutate(outcome = NA)
+
+# group members
+group_members <-c("Kevin", 'Felix', "Aria", "Gloria")
+
+sample_comments_list <- infer::rep_slice_sample(sample_comments_dat, n=100, replace = FALSE, reps=4) |> 
+  group_by(replicate) |> 
+  group_split() 
+
+walk(seq(1,4), function(x){
+  
+  write_xlsx(# pass data from list
+    sample_comments_list[[x]] |> 
+      select(-replicate), 
+    # where to save, & how to name it
+    str_c(
+    "~/repos/SURV622_Assignment/data/comments_to_code/",
+    group_members[x], ".xlsx")
+  )
+})
+
+# write files to github by name
 
 ```
