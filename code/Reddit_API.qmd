@@ -16,11 +16,13 @@ theme: spacelab
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(tidyverse)
 library(writexl)
+library(fedmatch)
 # install.packages("devtools")
 # devtools::install_github('ivan-rivera/RedditExtractor')
 library(RedditExtractoR)
+library(tidyverse)
+
 ```
 
 # Hitting the Reddit API
@@ -141,39 +143,58 @@ Read in the full dataset to begin the cleaning process.
 
 ```{r}
 reddit_unclean <- readRDS("~/repos/SURV622_Assignment/data/posts_data.RDS")
-glimpse(reddit_unclean)
+
 ```
 
 We will clean the data to remove posts that are only images, URLs, videos, contain irrelevant keywords such as "cryptocurrency" or "dodgecoin," and finally we remove posts that are brief.
 
 -   We listened for five days every hour, yet we needed to add additional posts as we did not have enough. Instead, we add posts starting from 2/24/25 when the project started. This way we have almost \~900 posts after cleaning the found data set.
+-   Note. Some posts are related meaning that the more than one keyword may show up. Identify the duplicates, and just keep one. We don't really care for keyword search after this point, so we can drop it.
 
 ```{r}
 
-reddit_clean <- reddit_unclean |>
+reddit_post <- reddit_unclean |>
   # set timeline threshold 
-  filter(date_utc > "2025-02-25") |> 
+  filter(date_utc > "2025-03-01") |> 
   # function we created
    tibble() |> 
-    # remove any duplicates
-  distinct() |> 
    mutate(
           # remove urls from text using rm_url function
       text = qdapRegex::rm_url(text),
+      # clean text from unwanted character
+      text = clean_strings(text),
       date_utc = ymd(date_utc) ) |> 
    filter(# remove none related topic threads
-           !str_detect(text, "crypto|coin")) 
+           !str_detect(text, "crypto|coin")) |> 
+  # drop duplicates
+  distinct_at(vars(-search_term, -comments)) 
 
-glimpse(reddit_clean)
+
+  # bring back search terms
+reddit_post <- reddit_post |> 
+  left_join(
+    reddit_unclean |> 
+      group_by(comments) |> 
+      filter(comments == max(comments)) |> 
+      group_by(url) |> 
+      mutate(id = row_number()) |> 
+      # keep first of x number of posts
+      filter(id==min(id)) |> 
+      select(url, search_term, comments)
+    )
+
+
 ```
 
 We now need to get the comments within each post. This will bring us back a list, and we will need to extract the post metadata and comments into separate data tables.
 
 ```{r}
 # pass the urls collected from the post
-reddit_content <- map(reddit_clean$url, function(x){
+reddit_content <- map(seq_along(reddit_post$url), function(x){
   
-  thread = get_thread_content(x)
+  print(x)
+  
+  thread = get_thread_content(reddit_post$url[x])
   
   # let it sleep so it doesn't hit the max per hour
   Sys.sleep(5)
@@ -182,7 +203,8 @@ reddit_content <- map(reddit_clean$url, function(x){
 }) 
 ```
 
--   Separate post metadata and merge as new columns into the clean reddit data set we extracted from our initial data collection.
+-   Separate post metadata and merge as new columns into the reddit posts data set we extracted from our initial data collection.
+-   We need a column that can join posts with comments. Currently, the URL column can do this but it is long. Let's assign a unique ID while enriching this dataset.
 
 ```{r}
 # collect metadata
@@ -194,9 +216,12 @@ reddit_metadata <- map_dfr(reddit_content, function(x){
   rename(date_utc = date) 
 
 # add new columns to our working data
-reddit_clean <- reddit_clean |> 
+reddit_post <- reddit_post |> 
   add_column(reddit_metadata |> 
-               select(score:cross_posts))
+               select(score:cross_posts)) |> 
+  arrange(date_utc) |>
+  # assign IDs to posts
+  mutate(post_id = row_number())
 ```
 
 -   We can now create a dataframe of the comments from the list that we compiled above.
@@ -220,6 +245,8 @@ reddit_comments <- map(reddit_content, function(x){
   mutate(
     # remove URL links
     comment = qdapRegex::rm_url(comment),
+    # clean comment strings
+    comment = clean_strings(comment),
     date = ymd(date), 
     timestamp = as.double(timestamp),
     # if no text in comment, code as NA
@@ -240,33 +267,20 @@ The comments are still missing subreddit and keyword search information. We will
 reddit_comments <- reddit_comments |> 
   left_join(
     # select needed variables
-    reddit_clean |> 
-      select(url, subreddit, search_term),
-    relationship = "many-to-many"
+    reddit_post |> 
+      select(url, subreddit, search_term, post_id)
   )
 
 glimpse(reddit_comments)
-```
-
-We want to do some additional cleaning to the posts dataset. Ideally, we want to remove empty or short text.
-
-```{r}
-reddit_clean <- reddit_clean |> 
-  mutate(text = na_if(text, "")) |> 
-   filter(!is.na(text),
-         # drop text that are one or two words
-         str_count(text, " ") >= 12
-  ) 
-  
 ```
 
 Finally, we check in two additional datasets into github, the posts, and the comments.
 
 ```{r}
 # write posts data
-writexl::write_xlsx(reddit_clean, "D:/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
+writexl::write_xlsx(reddit_post, "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
 
 # write comments data
-writexl::write_xlsx(reddit_comments, "D:/repos/SURV622_Assignment/data/comments_data_clean.xlsx")
+writexl::write_xlsx(reddit_comments, "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx")
 
 ```
