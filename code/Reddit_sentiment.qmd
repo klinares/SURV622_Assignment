@@ -1,0 +1,95 @@
+---
+title: "Assignment 2"
+author: Group 2
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+embed-resources: true
+editor: visual
+execute:
+  warning: false
+  message: false
+  error: false
+  tidy: true
+format: pdf
+theme: spacelab
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(writexl)
+library(text)
+library(readxl)
+library(tidyverse)
+
+```
+
+We will explore sentiment analysis to give us an advantage in coding comments.
+
+Read in data from github, and tidy it to continue processing.
+
+```{r}
+
+reddit_posts <- read_xlsx(
+  "~/repos/repos/SURV622_Assignment/data/posts_data_clean.xlsx") 
+
+# comments data
+reddit_comment <- read_xlsx(
+  "~/repos/repos/SURV622_Assignment/data/comments_data_clean.xlsx") 
+
+```
+
+We can use a model from huggingface to code each comment as positive, negative, or neutral.
+
+We build a function that we will use to loop through comments and get scores.
+
+```{r}
+sentiment_score_fun <- function(comment_text){
+  
+  description = str_trunc(comment_text, 1600) 
+  
+  # shorten descriptions to confirm to the model limitation
+  
+  # use huggingface model to detect emotional tone of summary
+  mod = 
+    textClassify(description,
+                 model_info = "ProsusAI/finbert", 
+                 return_all_scores = FALSE, 
+                 return_incorrect_results = FALSE,
+                 function_to_apply = "softmax",
+                 tokenizer_parallelism = TRUE,
+                 device = "gpu") |>   # change to "cpu" if a gpu is not configured
+    pull(1)
+  
+  return(mod)
+  
+}
+```
+
+Loop the comments through our function.
+
+```{r}
+reddit_comment_new <- reddit_comment |> 
+  mutate(label = ifelse(is.na(comment), NA, sentiment_score_fun(comment)))
+
+```
+
+```{r}
+ reddit_comment_new |> count(label)
+```
+
+```{r}
+ reddit_posts_new <- reddit_posts |> mutate(label = ifelse(is.na(text), NA, sentiment_score_fun(text)))
+```
+
+```{r}
+ reddit_posts_new |> count(label)
+```
+
+```{r}
+# write posts data
+writexl::write_xlsx(reddit_posts_new, "~/repos/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
+
+# write comments data
+writexl::write_xlsx(reddit_comment_new, "~/repos//repos/SURV622_Assignment/data/comments_data_clean.xlsx")
+
+```
