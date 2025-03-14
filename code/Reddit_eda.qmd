@@ -16,173 +16,142 @@ theme: spacelab
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
-library(knitr)
-library(fedmatch)
-library(tidyverse)
 library(readxl)
+library(viridis)
+library(ggthemes)
 library(tidytext)
+library(knitr)
+library(tidyverse)
+
 ```
 
-# We will explore the data we scraped to determine next steps for analysis.
+# We will explore the data we scraped to determine next steps for analysis examining both posts and comments related to these posts.
 
 1.  Read in data from github, and tidy it to continue processing.
 
-```{r}
-# posts data
-reddit_posts <- read_xlsx(
-  # "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx") |> path for Kevin
-  "~/Desktop/UMICH/SURV622_Assignment/data/posts_data_clean.xlsx") |> # path for Felix
-  mutate(date_utc = ymd(date_utc)) |> 
-  # remove variables not needed
-  # select(-timestamp)
-  mutate(
-    # Convert timestamp to POSIXct format
-    timestamp = as.POSIXct(timestamp, origin = "1970-01-01", tz = "UTC"),
-    
-    # Extract time of day (you can adjust the format as needed)
-    time_of_day = format(timestamp, "%H:%M:%S")
+```{r, message=FALSE}
+
+# path to repo
+#repo_path <- str_c(~/Desktop/UMICH/SURV622_Assignment/data/") # felix
+repo_path <- str_c("~/repos/SURV622_Assignment/data/") # kevin
+
+
+data_files <- list.files(repo_path) |> 
+  tibble() |> 
+  rename(data_file_names = 1) |> 
+  filter(str_detect(data_file_names, ".xlsx|.RDS")) |> 
+  mutate(data_names = str_remove_all(data_file_names, "\\..*"))
+
+
+list2env(
+  map(data_files$data_file_names, function(x){
+  
+  # read data file
+  if(str_detect(x, ".xlsx")) {
+    dat = read_xlsx(str_c(repo_path, x))
+  } else(
+    dat = readRDS(str_c(repo_path, x)) 
+  )
+  
+  # manipualte variables
+  dat = dat |> 
+     mutate(date_utc = ymd(date_utc),
+    hour_posted = hour(as_datetime(timestamp)),
   )
 
+}) |> 
+  # name the files
+    set_names(data_files$data_names),
 
-# comments data
-reddit_comment <- read_xlsx(
-  # "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx") |> Kevin's path
-  "~/Desktop/UMICH/SURV622_Assignment/data/comments_data_clean.xlsx") |> # Felix's path
-    mutate(date_utc = ymd(date_utc)) |> 
-  # great unique post id
-  arrange(date_utc) |> 
-  group_by(url) |> 
-  mutate(post_id = cur_group_id()) |> 
-  ungroup() |> 
-  # remove variables not needed
-  mutate(
-    # Convert timestamp to POSIXct format
-    timestamp = as.POSIXct(timestamp, origin = "1970-01-01", tz = "UTC"),
-    
-    # Extract time of day (you can adjust the format as needed)
-    time_of_day = format(timestamp, "%H:%M:%S")
-  ) |>
-  select(-author, -comment_id) 
-
-
-# id url group IDs to the posts data
-reddit_posts_2 <- reddit_posts |> 
-  semi_join(reddit_comment |> select(url, post_id)) 
+# save data to the global environment
+globalenv()
+)
 
 ```
 
-### The strings we will be processing sometimes have special characters, numbers, brackets. We need to clean these string for processing.
+### 
 
--   We can use the fedmatch::clean_strings() function to tidy up the text. The following is an example of what will be cleaned.
+## How many posts were collected in total and by day before and after processing/cleaning?
 
-```{r}
-# print example of posts
-reddit_posts |> 
-  slice(10:15) |> 
-  select(text) 
-
-# clean posts
-reddit_posts |> 
-  slice(10:15) |> 
-  mutate(text = clean_strings(text)) |> 
-  select(text) 
-
-
-```
-
--   Clean posts and comment strings.
+-   There appears to be a noticeable peak in activity during the middle of the week. However, we don't have enough data to conclusively say it's due to the day of the week itself. It's more likely that these spikes are linked to specific events that occurred on those days, which sparked conversations.
+-   The two peaks in our graph could be attributed to two major news stories. On March 5, Elon Musk made a statement about wanting to "save Western civilization from empathy," and on March 6, there were reports that President Trump was limiting Musk's authority due to backlash over cuts to DOGE. These events likely had a significant impact on the volume of Reddit posts related to Elon Musk and DOGE, driving the observed spikes in activity.
+-   On May third, news outlets started reporting that DOGE was claiming \$105 billion dollars in savings from cutting "wasteful" spending by layoffs and cutting foreign aid. This amount is controversial since since the receipts shown on their site only amount to less than \$9.6 billion [https://abcnews.go.com/US/doge-website-now-saved-105-billion-backtracked-earlier/story?id=119408347](#0). This could have prompted reddit users to take to subreddits and provide their opinion or thoughts on this matter.
 
 ```{r}
-reddit_posts <- reddit_posts |> 
-  mutate(text = clean_strings(text))
+# number of total posts
+total_posts <- posts_data |> 
+  filter(date_utc > "2025-03-01") |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  mutate(Posts = "pre processing") |> 
+  add_row(
+    posts_data_clean |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  mutate(Posts = "post processing")
+  )
+  
+total_posts |> 
+  group_by(Posts) |> 
+  reframe(Total = sum(total)) |> 
+  kable()
+  
+total_posts |> 
+  ggplot( aes(x = date_utc, y = total, color= Posts)) + 
+  geom_point(size = 3) +  
+  geom_line(linewidth = 1) +  
+  labs(
+    title = "Total Number of Posts per Day Pre and Post Processing",
+    x = "Day",
+    y = "Total Number of Posts") +
+  scale_color_viridis_d(option="C", end=.8) + 
+  theme_hc()
+  
 
-reddit_comment <- reddit_comment |> 
-  mutate(comment = clean_strings(comment))
-
-reddit_posts_2 <- reddit_posts_2 |> 
-  mutate(text=clean_strings(text))
 ```
 
 \
 
-### We can now begin to explore the data. First we explore the posts.
+## How many comments and by day?
 
-```{r, results = 'asis'}
+-   We see a peak in the comments during March 6th, which was a Thursday, and perhaps in anticipation of DOGE policies that often are released on Friday morning and have come to be known as "Musk-acre Friday" (<https://smotus.substack.com/p/friday-night-musk-acre>).
 
-  reddit_posts |>
-  slice(364) |> 
-  pull(text) 
-
-```
-
-## How many posts were collected in total and by day? How many posts after data cleaning? Is there a pattern with respect to the time of day or day of week when posts were created? Is there a relationship between events and frequency of tweets?
 ```{r}
-# number of total posts
-totalposts <- reddit_posts %>%
-  summarize(
-    TotalPosts = n()
-  )
-knitr::kable(totalposts)
 
-# number of posts by day
-byday_posts <- reddit_posts %>%
-  group_by(date_utc) %>%
-  summarize(
-    total = n()
-  )
+# number of comments
+comments_data_clean |> nrow() |> kable(col.names = "Total Comments")
 
-# plot
-ggplot(byday_posts, aes(x = date_utc, y = total)) + 
-  geom_point(color = "blue", size = 3) +  
-  geom_line(color = "steelblue", linewidth = 1) +  
+comments_data_clean |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  ggplot( aes(x = date_utc, y = total)) + 
+  geom_point(size = 3) +  
+  geom_line(linewidth = 1) +  
   labs(
-    title = "Total Number of Posts per Day",
+    title = "Total Number of comments per Day during collection",
     x = "Day",
-    y = "Total Number of Posts"
-  ) +
-  theme_minimal()
+    y = "Total Number of Posts") +
+  scale_color_viridis_d(option="A") +
+  theme_hc()
   
-
-# number of total comments
-totalcomments <- reddit_comment %>%
-  summarize(
-    TotalComments = n()
-  )
-knitr::kable(totalcomments)
-
-# number of comments by day
-byday_comments <- reddit_comment %>%
-  group_by(date_utc) %>%
-  summarize(
-    total = n()
-  )
-
-# plot
-ggplot(byday_comments, aes(x = date_utc, y = total)) + 
-  geom_point(color = "green", size = 3) +  
-  geom_line(color = "lightgreen", linewidth = 1) +
-  labs(
-    title = "Total Number of Posts per Day",
-    x = "Day",
-    y = "Total Number of Posts"
-  ) +
-  theme_minimal()
 ```
 
+##  
 
-There appears to be a noticeable peak in activity during the middle of the week. However, we don't have enough data to conclusively say it's due to the day of the week itself. It's more likely that these spikes are linked to specific events that occurred on those days, which sparked conversations.
+## Is there a pattern with respect to the time of day or day of week when posts were created? 
 
-The two peaks in our graph could be attributed to two major news stories. On March 5, Elon Musk made a statement about wanting to "save Western civilization from empathy," and on March 6, there were reports that President Trump was limiting Musk's authority due to backlash over cuts to DOGE. These events likely had a significant impact on the volume of Reddit posts related to Elon Musk and DOGE, driving the observed spikes in activity.
+## Is there a relationship between events and frequency of reddit posts?
+
+-   Most posts occur during the early morning, noon, and afternoon hours. The highest peak is around lunchtime, likely due to people posting during their lunch break. There is also significant activity in the afternoon, evening, and early morning. This could be because people have more free time or stay up late, allowing them to take the time to write posts, which require more effort than quick interactions. The fewest posts are seen in the morning, which makes sense as people are typically getting ready for work, commuting, or sleeping in.
+
+-   The trend for comments mirrors that of posts. This makes sense because people are likely using Reddit at similar times for both posting and commenting. However, the volume of comments is much higher than the number of posts, as each post receives many comments from different users.
 
 ```{r}
-# Number of posts by time of day (hour)
-byhour_posts <- reddit_posts %>%
-  mutate(hour_of_day = hour(timestamp)) %>%
-  group_by(hour_of_day) %>%
-  summarize(total = n())
 
-# Plot number of posts by hour of day
-ggplot(byhour_posts, aes(x = hour_of_day, y = total)) + 
+posts_data_clean |> 
+  group_by(hour_posted ) |> 
+  reframe(Total = n()) |> 
+  ggplot(aes(x=hour_posted, y=Total)) + 
   # geom_bar(stat = "identity", fill = "steelblue") + 
   geom_point(color = "blue", size = 3) +  
   geom_line(color = "steelblue", linewidth = 1) +
@@ -191,17 +160,14 @@ ggplot(byhour_posts, aes(x = hour_of_day, y = total)) +
     x = "Hour of Day",
     y = "Total Number of Posts"
   ) +
-  theme_minimal()
+  theme_minimal() +
+  theme_hc()
 
-# Number of comments by time of day (hour)
-byhour_comments <- reddit_comment %>%
-  mutate(hour_of_day = hour(timestamp)) %>%
-  group_by(hour_of_day) %>%
-  summarize(total = n())
-
-# Plot number of posts by hour of day
-ggplot(byhour_comments, aes(x = hour_of_day, y = total)) + 
-  # geom_bar(stat = "identity", fill = "lightgreen") + 
+comments_data_clean |> 
+  group_by(hour_posted ) |> 
+  reframe(Total = n()) |> 
+  ggplot(aes(x=hour_posted, y=Total)) + 
+  # geom_bar(stat = "identity", fill = "steelblue") + 
   geom_point(color = "green", size = 3) +  
   geom_line(color = "lightgreen", linewidth = 1) +
   labs(
@@ -209,19 +175,17 @@ ggplot(byhour_comments, aes(x = hour_of_day, y = total)) +
     x = "Hour of Day",
     y = "Total Number of Posts"
   ) +
-  theme_minimal()
+  theme_hc()
 ```
 
-Most posts occur during the early morning, noon, and afternoon hours. The highest peak is around lunchtime, likely due to people posting during their lunch break. There is also significant activity in the afternoon, evening, and early morning. This could be because people have more free time or stay up late, allowing them to take the time to write posts, which require more effort than quick interactions. The fewest posts are seen in the morning, which makes sense as people are typically getting ready for work, commuting, or sleeping in.
+## What are the words in the set of posts you have assembled that appear most frequently?
 
-The trend for comments mirrors that of posts. This makes sense because people are likely using Reddit at similar times for both posting and commenting. However, the volume of comments is much higher than the number of posts, as each post receives many comments from different users.
-
-
-
-## What are the words in the set of posts you have assembled that appear most frequently? 
 ```{r}
+#| fig-width: 6
+#| fig-height: 7
+#| 
 # tokenize words to count frequencies for reddit posts
-posts_word_counts <- reddit_posts |>
+posts_word_counts <- posts_data_clean |>
   select(title, text) |>
   pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
@@ -238,7 +202,7 @@ ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
   theme_minimal()
 
 # tokenize words to count frequencies for reddit comments
-comments_word_counts <- reddit_comment |>
+comments_word_counts <- comments_data_clean |>
   select(comment) |>
   pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
@@ -258,9 +222,13 @@ ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
 The graphs above show the most frequent words in both Reddit posts and their comments. However, many of these words are stopwords, which don't provide much insight into the actual content of the discussions. To get a better understanding of what people are really talking about, we will remove these stopwords in the next step.
 
 ## How does this change if you exclude “stop words” such as “a,” “an,” “the,” “is,” and others that are common in English sentences but are generally not informative?
+
 ```{r}
+#| fig-width: 6
+#| fig-height: 7
+#| #| 
 # tokenize words to count frequencies for reddit posts removing stop words
-posts_word_counts <- reddit_posts |>
+posts_word_counts <- posts_data_clean |>
   select(title, text) |>
   pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
@@ -278,7 +246,7 @@ ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
   theme_minimal()
 
 # tokenize words to count frequencies for Reddit comments, removing stop words
-comments_word_counts <- reddit_comment |>
+comments_word_counts <- comments_data_clean |>
   select(comment) |>
   pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
