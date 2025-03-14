@@ -219,7 +219,14 @@ analysis.}\label{we-will-explore-the-data-we-scraped-to-determine-next-steps-for
   \StringTok{"\textasciitilde{}/Desktop/UMICH/SURV622\_Assignment/data/posts\_data\_clean.xlsx"}\NormalTok{) }\SpecialCharTok{|\textgreater{}} \CommentTok{\# path for Felix}
   \FunctionTok{mutate}\NormalTok{(}\AttributeTok{date\_utc =} \FunctionTok{ymd}\NormalTok{(date\_utc)) }\SpecialCharTok{|\textgreater{}} 
   \CommentTok{\# remove variables not needed}
-  \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{timestamp)}
+  \CommentTok{\# select({-}timestamp)}
+  \FunctionTok{mutate}\NormalTok{(}
+    \CommentTok{\# Convert timestamp to POSIXct format}
+    \AttributeTok{timestamp =} \FunctionTok{as.POSIXct}\NormalTok{(timestamp, }\AttributeTok{origin =} \StringTok{"1970{-}01{-}01"}\NormalTok{, }\AttributeTok{tz =} \StringTok{"UTC"}\NormalTok{),}
+    
+    \CommentTok{\# Extract time of day (you can adjust the format as needed)}
+    \AttributeTok{time\_of\_day =} \FunctionTok{format}\NormalTok{(timestamp, }\StringTok{"\%H:\%M:\%S"}\NormalTok{)}
+\NormalTok{  )}
 
 
 \CommentTok{\# comments data}
@@ -233,7 +240,14 @@ analysis.}\label{we-will-explore-the-data-we-scraped-to-determine-next-steps-for
   \FunctionTok{mutate}\NormalTok{(}\AttributeTok{post\_id =} \FunctionTok{cur\_group\_id}\NormalTok{()) }\SpecialCharTok{|\textgreater{}} 
   \FunctionTok{ungroup}\NormalTok{() }\SpecialCharTok{|\textgreater{}} 
   \CommentTok{\# remove variables not needed}
-  \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{author, }\SpecialCharTok{{-}}\NormalTok{timestamp, }\SpecialCharTok{{-}}\NormalTok{comment\_id) }
+  \FunctionTok{mutate}\NormalTok{(}
+    \CommentTok{\# Convert timestamp to POSIXct format}
+    \AttributeTok{timestamp =} \FunctionTok{as.POSIXct}\NormalTok{(timestamp, }\AttributeTok{origin =} \StringTok{"1970{-}01{-}01"}\NormalTok{, }\AttributeTok{tz =} \StringTok{"UTC"}\NormalTok{),}
+    
+    \CommentTok{\# Extract time of day (you can adjust the format as needed)}
+    \AttributeTok{time\_of\_day =} \FunctionTok{format}\NormalTok{(timestamp, }\StringTok{"\%H:\%M:\%S"}\NormalTok{)}
+\NormalTok{  ) }\SpecialCharTok{|\textgreater{}}
+  \FunctionTok{select}\NormalTok{(}\SpecialCharTok{{-}}\NormalTok{author, }\SpecialCharTok{{-}}\NormalTok{comment\_id) }
 
 
 \CommentTok{\# id url group IDs to the posts data}
@@ -340,9 +354,11 @@ both checks would be federal payments i don t want to lose out on the
 resignation benefits just to make 12 hr but working does help me mental
 health and give me a purpose any insight would be greatly appreciated''
 
-How many posts were collected in total and by day? How many posts after
-data cleaning? Is there a pattern with respect to the time of day or day
-of week when posts were created?
+\subsection{How many posts were collected in total and by day? How many
+posts after data cleaning? Is there a pattern with respect to the time
+of day or day of week when posts were created? Is there a relationship
+between events and frequency of
+tweets?}\label{how-many-posts-were-collected-in-total-and-by-day-how-many-posts-after-data-cleaning-is-there-a-pattern-with-respect-to-the-time-of-day-or-day-of-week-when-posts-were-created-is-there-a-relationship-between-events-and-frequency-of-tweets}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -368,16 +384,16 @@ TotalPosts \\
 \begin{Shaded}
 \begin{Highlighting}[]
 \CommentTok{\# number of posts by day}
-\NormalTok{byday }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_posts }\SpecialCharTok{\%\textgreater{}\%}
+\NormalTok{byday\_posts }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_posts }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{group\_by}\NormalTok{(date\_utc) }\SpecialCharTok{\%\textgreater{}\%}
   \FunctionTok{summarize}\NormalTok{(}
     \AttributeTok{total =} \FunctionTok{n}\NormalTok{()}
 \NormalTok{  )}
 
 \CommentTok{\# plot}
-\FunctionTok{ggplot}\NormalTok{(byday, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ date\_utc, }\AttributeTok{y =}\NormalTok{ total)) }\SpecialCharTok{+} 
-  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"blue"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}  \CommentTok{\# Larger points for visibility}
-  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}  \CommentTok{\# Thicker line for clarity}
+\FunctionTok{ggplot}\NormalTok{(byday\_posts, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ date\_utc, }\AttributeTok{y =}\NormalTok{ total)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"blue"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}  
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}  
   \FunctionTok{labs}\NormalTok{(}
     \AttributeTok{title =} \StringTok{"Total Number of Posts per Day"}\NormalTok{,}
     \AttributeTok{x =} \StringTok{"Day"}\NormalTok{,}
@@ -389,17 +405,131 @@ TotalPosts \\
 
 \includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-5-1.pdf}
 
-Is there a relationship between events and frequency of tweets?
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# number of total comments}
+\NormalTok{totalcomments }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_comment }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}
+    \AttributeTok{TotalPosts =} \FunctionTok{n}\NormalTok{()}
+\NormalTok{  )}
+\NormalTok{knitr}\SpecialCharTok{::}\FunctionTok{kable}\NormalTok{(totalcomments)}
+\end{Highlighting}
+\end{Shaded}
 
-The two peaks in our graph can potentially be attributed to these two
-major news stories on those days. On March 5, Elon talked about how he
-wishes to ``save Western civilization from empathy''. On March 6,
-President Trump was reported to further limit Elon Musk's authority amid
-backlash to DOGE cuts. These two events may have had a major impact in
-the number of Reddit posts related to DOGE and Elon.
+\begin{longtable}[]{@{}r@{}}
+\toprule\noalign{}
+TotalPosts \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+12492 \\
+\end{longtable}
 
-What are the words in the set of posts you have assembled that appear
-most frequently?
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# number of comments by day}
+\NormalTok{byday\_comments }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_comment }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(date\_utc) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}
+    \AttributeTok{total =} \FunctionTok{n}\NormalTok{()}
+\NormalTok{  )}
+
+\CommentTok{\# plot}
+\FunctionTok{ggplot}\NormalTok{(byday\_comments, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ date\_utc, }\AttributeTok{y =}\NormalTok{ total)) }\SpecialCharTok{+} 
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"green"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}  
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"lightgreen"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Total Number of Posts per Day"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Day"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Total Number of Posts"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-5-2.pdf}
+
+There appears to be a noticeable peak in activity during the middle of
+the week. However, we don't have enough data to conclusively say it's
+due to the day of the week itself. It's more likely that these spikes
+are linked to specific events that occurred on those days, which sparked
+conversations.
+
+The two peaks in our graph could be attributed to two major news
+stories. On March 5, Elon Musk made a statement about wanting to ``save
+Western civilization from empathy,'' and on March 6, there were reports
+that President Trump was limiting Musk's authority due to backlash over
+cuts to DOGE. These events likely had a significant impact on the volume
+of Reddit posts related to Elon Musk and DOGE, driving the observed
+spikes in activity.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Number of posts by time of day (hour)}
+\NormalTok{byhour\_posts }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_posts }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{hour\_of\_day =} \FunctionTok{hour}\NormalTok{(timestamp)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(hour\_of\_day) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{total =} \FunctionTok{n}\NormalTok{())}
+
+\CommentTok{\# Plot number of posts by hour of day}
+\FunctionTok{ggplot}\NormalTok{(byhour\_posts, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ hour\_of\_day, }\AttributeTok{y =}\NormalTok{ total)) }\SpecialCharTok{+} 
+  \CommentTok{\# geom\_bar(stat = "identity", fill = "steelblue") + }
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"blue"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}  
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"steelblue"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Total Number of Posts by Hour of Day (24{-}hour clock)"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Hour of Day"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Total Number of Posts"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-6-1.pdf}
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\CommentTok{\# Number of comments by time of day (hour)}
+\NormalTok{byhour\_comments }\OtherTok{\textless{}{-}}\NormalTok{ reddit\_comment }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{mutate}\NormalTok{(}\AttributeTok{hour\_of\_day =} \FunctionTok{hour}\NormalTok{(timestamp)) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{group\_by}\NormalTok{(hour\_of\_day) }\SpecialCharTok{\%\textgreater{}\%}
+  \FunctionTok{summarize}\NormalTok{(}\AttributeTok{total =} \FunctionTok{n}\NormalTok{())}
+
+\CommentTok{\# Plot number of posts by hour of day}
+\FunctionTok{ggplot}\NormalTok{(byhour\_comments, }\FunctionTok{aes}\NormalTok{(}\AttributeTok{x =}\NormalTok{ hour\_of\_day, }\AttributeTok{y =}\NormalTok{ total)) }\SpecialCharTok{+} 
+  \CommentTok{\# geom\_bar(stat = "identity", fill = "lightgreen") + }
+  \FunctionTok{geom\_point}\NormalTok{(}\AttributeTok{color =} \StringTok{"green"}\NormalTok{, }\AttributeTok{size =} \DecValTok{3}\NormalTok{) }\SpecialCharTok{+}  
+  \FunctionTok{geom\_line}\NormalTok{(}\AttributeTok{color =} \StringTok{"lightgreen"}\NormalTok{, }\AttributeTok{linewidth =} \DecValTok{1}\NormalTok{) }\SpecialCharTok{+}
+  \FunctionTok{labs}\NormalTok{(}
+    \AttributeTok{title =} \StringTok{"Total Number of Comments by Hour of Day (24{-}hour clock)"}\NormalTok{,}
+    \AttributeTok{x =} \StringTok{"Hour of Day"}\NormalTok{,}
+    \AttributeTok{y =} \StringTok{"Total Number of Posts"}
+\NormalTok{  ) }\SpecialCharTok{+}
+  \FunctionTok{theme\_minimal}\NormalTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-6-2.pdf}
+
+Most posts occur during the early morning, noon, and afternoon hours.
+The highest peak is around lunchtime, likely due to people posting
+during their lunch break. There is also significant activity in the
+afternoon, evening, and early morning. This could be because people have
+more free time or stay up late, allowing them to take the time to write
+posts, which require more effort than quick interactions. The fewest
+posts are seen in the morning, which makes sense as people are typically
+getting ready for work, commuting, or sleeping in.
+
+The trend for comments mirrors that of posts. This makes sense because
+people are likely using Reddit at similar times for both posting and
+commenting. However, the volume of comments is much higher than the
+number of posts, as each post receives many comments from different
+users.
+
+\subsection{What are the words in the set of posts you have assembled
+that appear most
+frequently?}\label{what-are-the-words-in-the-set-of-posts-you-have-assembled-that-appear-most-frequently}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -422,7 +552,7 @@ most frequently?
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-6-1.pdf}
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-7-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -445,16 +575,18 @@ most frequently?
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-6-2.pdf}
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-7-2.pdf}
 
-The above graphs show the most frequent words in both reddit posts and
-their comments. Most of these are stopwords, therefore we will proceed
-to remove these to get a better idea of what people are really
-discussing.
+The graphs above show the most frequent words in both Reddit posts and
+their comments. However, many of these words are stopwords, which don't
+provide much insight into the actual content of the discussions. To get
+a better understanding of what people are really talking about, we will
+remove these stopwords in the next step.
 
-How does this change if you exclude ``stop words'' such as ``a,''
-``an,'' ``the,'' ``is,'' and others that are common in English sentences
-but are generally not informative?
+\subsection{How does this change if you exclude ``stop words'' such as
+``a,'' ``an,'' ``the,'' ``is,'' and others that are common in English
+sentences but are generally not
+informative?}\label{how-does-this-change-if-you-exclude-stop-words-such-as-a-an-the-is-and-others-that-are-common-in-english-sentences-but-are-generally-not-informative}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -478,7 +610,7 @@ but are generally not informative?
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-7-1.pdf}
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-8-1.pdf}
 
 \begin{Shaded}
 \begin{Highlighting}[]
@@ -502,12 +634,12 @@ but are generally not informative?
 \end{Highlighting}
 \end{Shaded}
 
-\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-7-2.pdf}
+\includegraphics{Reddit_eda_files/figure-pdf/unnamed-chunk-8-2.pdf}
 
-The above graphs show the most frequent words used in both Reddit posts
-and their comment sections. We see that most of these are directly
-related to our topic, with mentions of the President, the federal
-government, DOGE and RIF.
+The graphs above show the most frequent words used in both Reddit posts
+and their comment sections. We can see that many of these words are
+directly related to our topic, with frequent mentions of the President,
+DOGE, the federal government, and RIF.
 
 
 
