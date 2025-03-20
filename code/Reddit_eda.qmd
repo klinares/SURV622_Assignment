@@ -101,7 +101,7 @@ total_posts |>
   geom_point(size = 3) +  
   geom_line(linewidth = 1) +  
   labs(
-    title = "Total Number of Posts per Day Pre and Post Processing",
+    title = "Total Number of Posts per Day Pre/Post Processing",
     x = "Day",
     y = "Total Number of Posts") +
   scale_color_viridis_d(option="C", end=.8) + 
@@ -128,7 +128,7 @@ comments_data_clean |>
   geom_point(size = 3) +  
   geom_line(linewidth = 1) +  
   labs(
-    title = "Total Number of comments per Day during collection",
+    title = "Total Number of collected comments per Day",
     x = "Day",
     y = "Total Number of Posts") +
   scale_color_viridis_d(option="A") +
@@ -136,9 +136,9 @@ comments_data_clean |>
   
 ```
 
-##  
+## 
 
-## Is there a pattern with respect to the time of day or day of week when posts were created? 
+## Is there a pattern with respect to the time of day or day of week when posts were created?
 
 ## Is there a relationship between events and frequency of reddit posts?
 

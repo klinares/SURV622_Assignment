@@ -1,0 +1,349 @@
+---
+title: "DOGE Days on Reddit: Decoding Public Sentiment in a Federal Shakeup"
+format:
+  jasa-pdf:
+    keep-tex: true  
+    journal:
+      blinded: false
+  jasa-html: default
+date: last-modified
+author:
+  - name: Kevin Linares
+    affiliations:
+      - name: University of Maryland
+  - name: Felix Baez-Santiago
+  - name: Aria Lu
+  - name: Gloria Zhou
+    affiliations:
+      - name: University of Michigan
+abstract: |
+  This study explores the impact of the Department of Government Efficiency (DOGE)'s federal workforce reductions on public sentiment, utilizing Reddit as a data source. By scraping and analyzing posts and comments related to DOGE, we examined public reactions, including fear, anxiety, and support, during a period of significant governmental change. The analysis reveals how specific news events influenced online discourse and highlights the utility of social media for understanding public perception of policy impacts.
+keywords:
+  - Reddit
+  - Federal Government
+  - DOGE
+editor: 
+  markdown: 
+    wrap: sentence
+---
+
+```{r include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+
+library(readxl)
+library(viridis)
+library(ggthemes)
+library(tidytext)
+library(knitr)
+library(tidyverse)
+
+
+# path to repo
+#repo_path <- str_c(~/Desktop/UMICH/SURV622_Assignment/data/") # felix
+repo_path <- str_c("~/repos/SURV622_Assignment/data/") # kevin
+
+
+data_files <- list.files(repo_path) |> 
+  tibble() |> 
+  rename(data_file_names = 1) |> 
+  filter(str_detect(data_file_names, ".xlsx|.RDS")) |> 
+  mutate(data_names = str_remove_all(data_file_names, "\\..*"))
+
+
+list2env(
+  map(data_files$data_file_names, function(x){
+  
+  # read data file
+  if(str_detect(x, "posts_data_clean")) {
+    dat = read_xlsx(str_c(repo_path, x))
+  } 
+    else if(str_detect(x, "comments_data_clean")){
+    
+    dat =  read_excel(str_c(repo_path, x),
+                      col_types = c("text", "text", "date", "guess", "numeric",
+                                    "numeric", "numeric", "numeric", "text",
+                                     "guess", "text", "text", "guess", "text",
+                                     "text"))
+    
+    }
+    
+  
+    
+    else(
+    dat = readRDS(str_c(repo_path, x)) 
+  )
+  
+  # manipualte variables
+  dat = dat |> 
+     mutate(date_utc = ymd(date_utc),
+    hour_posted = hour(as_datetime(timestamp)),
+  )
+
+}) |> 
+  # name the files
+    set_names(data_files$data_names),
+
+# save data to the global environment
+globalenv()
+)
+```
+
+## Introduction {#sec-intro}
+
+Since it's inception in January of 2025, the Department of Government Efficiency (DOGE) has fired over 200,000 federal workers in an effort by the new administration to keep a campaign promise in reducing federal government.
+However, DOGE's overreaching approach and often illegal tactics has resulted sparked fear and anxiety among the federal workforce, thus taking a toll on their mental health.
+Many are uncertain about their career faith as it is in the hands of outsiders that disregard internal policies with no remorse.
+The current topic on how DOGE is impacting federal worker's perceptions of job security is likely to continue and worsen over the next few months, given DOGE's nontransparent and unconventional methods without accountability.
+We propose that Reddit as a platform offers researchers a vantage look into lively discussions, timely reactions, and grievances from federal workers on this topic.
+Furthermore, we also expect to capture positive reactions to DOGE's approach in reducing the federal workforce.
+
+## Methods {#sec-meth}
+
+*Search Terms*.
+Our preliminary Reddit API scrape allowed us to decide on a set of keyword searches related to this topic of research.
+This was an iterative process that resulted in the use of 8 keywords we used to search for posts related to the topic of interest (see Table 1).
+We excluded keywords that were either vague or broad such as "Elon Musk" or "drain the swamp." Additionally, we examined subreddit posts and found a plethora of unrelated posts using our keyword search list.
+For instance, searching for "Fork in the Road" brought back several subreddits on motorcycles and mountain biking.
+Additionally, searching for "DOGE" also brought back posts on DOGEcoin which is unrelated to our topic.
+Therefore, we meticoulsly combed through a list of subreddits we acquired from our initial scrape and selected those that contaiend relevant posts.
+To compensate for balance on this topic, we included conservative subreddits such as "neoliberal", "AskConservitives" as well as we avoided specific agency subreddits, for instance "NIH" or "CDC" as to not overwhelm one particular view point.
+Overall we ended with 19 subreddits (see appendix) and 8 keywords resulting in 152 unique combinations to scrape.
+
+```{r}
+posts_data |> distinct(search_term) |> 
+  kable(caption = "List of keywords related to topic")
+
+```
+
+*Analytic Plan*.
+We listened to the Reddit API from March 2 through the 10th on every top of the hour by scraping each combination of our seven keywords and 20 subreddits resulting in 152 API hits per hour.
+Reddit API scraping limits were managed by setting a sleep timer in between API hits.
+As new Reddit posts were scraped they were entered into a data table without preprocessing.
+After the listening period, the accumulated number of unprocessed posts was 643.
+Every row in our data table equated to one post, and we had 8 columns to include the date and time of the post, title and text of post, subreddit where the post derived from, number of comments associated with it, url, and we recorded the search term that was used to collect the post.
+We processed the posts to exclude duplicates, and in some instance two different keywords resulted in scraping the same posts so we kept we dropped one of them.
+Post text were cleaned in terms of removing weblinks and when possible translating special character such as the at sign to the word "at." The date column was converted to a date class variable and we extracted the day of the week and time of day from it to use in analysis.
+Cleaning our scraped posts resulted in 557 posts.
+
+A glance at the posts revealed that many of them are factual statements, questions, or re-postings of news articles and videos.
+Therefore, these texts do not lend themselves to be coded for favorability, and we decided to also scrape the comments associated with each post.
+This resulted in 12,553 comments, post processing, containing information about the score, up/down votes, and date/time posted.
+We removed comments that had only a weblink, video, or image as these cannot be coded.
+A look into some of these comments revealed more opinionated statements and reactions which we than randomly (without replacement) selected 400 comments assigned to four graduate students to code for whether the comment favored DOGE's approach to the reduction in the federal force, opposed, or was neutral.
+
+## Results
+
+We show the number of posts pre/post processing by day in Figure 1 during the timeframe that we collected these data..
+There appears to be a noticeable peak in activity during the middle of the week.
+However, we don't have enough data across weeks to conclusively say it's due to the day of the week itself.
+It's more likely that these spikes are linked to specific events that occurred on those days, which sparked conversations.
+The two peaks in our graph could be attributed to two major news stories.
+On March 5, Elon Musk made a statement about wanting to "save Western civilization from empathy," and on March 6, there were reports that President Trump was limiting Musk's authority due to backlash over cuts to DOGE.
+These events likely had a significant impact on the volume of Reddit posts related to Elon Musk and DOGE, driving the observed spikes in activity.
+
+On May third, news outlets started reporting that DOGE was claiming \$105 billion dollars in savings from cutting "wasteful" spending by layoffs and cutting foreign aid.
+This amount is controversial since since the receipts shown on their site only amount to less than [\$9.6 billion](https://abcnews.go.com/US/doge-website-now-saved-105-billion-backtracked-earlier/story?id=119408347).
+This could have prompted Reddit users to take to subreddits and provide their opinion or thoughts on this matter.
+
+```{r}
+#| fig-width: 6
+#| fig-height: 3
+#| 
+# number of total posts
+total_posts <- posts_data |> 
+  filter(date_utc > "2025-03-01") |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  mutate(Posts = "pre processing") |> 
+  add_row(
+    posts_data_clean |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  mutate(Posts = "post processing")
+  )
+
+total_posts |> 
+  ggplot( aes(x = date_utc, y = total, color= Posts)) + 
+  geom_point(size = 3) +  
+  geom_line(linewidth = 1) +  
+  labs(
+    title = "Figure 1. Total Number of Daily Posts Pre/Post Processing",
+    x = "Day",
+    y = "Total Number of Posts") +
+  scale_color_viridis_d(option="C", end=.8) + 
+  theme_hc()
+  
+
+```
+
+We see a peak in the comments in Figure 2 during March 6th, which was a Thursday, and perhaps in anticipation of DOGE policies that often are released on Friday morning and have come to be known as "[Musk-acre Friday](https://smotus.substack.com/p/friday-night-musk-acre)."
+
+```{r}
+
+comments_data_clean |> 
+  group_by(date_utc) |> 
+  reframe(total = n()) |> 
+  ggplot( aes(x = date_utc, y = total)) + 
+  geom_point(size = 3) +  
+  geom_line(linewidth = 1) +  
+  labs(
+    title = "Figure 2. Total Number of daily comments",
+    x = "Day",
+    y = "Total Number of Posts") +
+  scale_color_viridis_d(option="A") +
+  theme_hc()
+```
+
+Most posts occur during the early morning, noon, and afternoon hours (see Figure 3).
+The highest peak is around lunchtime, likely due to people posting during their lunch break.
+There is also significant activity in the afternoon, evening, and early morning.
+This could be because people have more free time or stay up late, allowing them to take the time to write posts, which require more effort than quick interactions.
+The fewest posts are seen in the morning, which makes sense as people are typically getting ready for work, commuting, or sleeping in.
+The trend for comments (see Figure 4) mirrors that of posts.
+This makes sense because people are likely using Reddit at similar times for both posting and commenting.
+However, the volume of comments is much higher than the number of posts, as each post receives many comments from different users.
+
+```{r}
+posts_data_clean |> 
+  group_by(hour_posted ) |> 
+  reframe(Total = n()) |> 
+  ggplot(aes(x=hour_posted, y=Total)) + 
+  # geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_point(color = "blue", size = 3) +  
+  geom_line(color = "steelblue", linewidth = 1) +
+  labs(
+    title = "Figure 3. Total Number of Posts by Hour of Day",
+    subtitle = "(24-hour clock)",
+    x = "Hour of Day",
+    y = "Total Number of Posts"
+  ) +
+  theme_minimal() +
+  theme_hc()
+
+comments_data_clean |> 
+  group_by(hour_posted ) |> 
+  reframe(Total = n()) |> 
+  ggplot(aes(x=hour_posted, y=Total)) + 
+  # geom_bar(stat = "identity", fill = "steelblue") + 
+  geom_point(color = "green", size = 3) +  
+  geom_line(color = "lightgreen", linewidth = 1) +
+  labs(
+    title = "Figure 4. Total Number of Comments by Hour of Day",
+    subtitle = "(24-hour clock)",
+    x = "Hour of Day",
+    y = "Total Number of Posts"
+  ) +
+  theme_hc()
+```
+
+### What are the words in the set of posts you have assembled that appear most frequently?
+
+```{r}
+#| fig-width: 6
+#| fig-height: 7
+#| 
+# tokenize words to count frequencies for reddit posts
+posts_word_counts <- posts_data_clean |>
+  select(title, text) |>
+  pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Posts (Including Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+
+# tokenize words to count frequencies for reddit comments
+comments_word_counts <- comments_data_clean |>
+  select(comment) |>
+  pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "lightgreen") +  # Removed extra parentheses
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Comments (Including Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+```
+
+The graphs above show the most frequent words in both Reddit posts and their comments.
+However, many of these words are stopwords, which don't provide much insight into the actual content of the discussions.
+To get a better understanding of what people are really talking about, we will remove these stopwords in the next step.
+
+### How does this change if you exclude “stop words” such as “a,” “an,” “the,” “is,” and others that are common in English sentences but are generally not informative?
+
+```{r}
+#| fig-width: 6
+#| fig-height: 7
+#| #| 
+# tokenize words to count frequencies for reddit posts removing stop words
+posts_word_counts <- posts_data_clean |>
+  select(title, text) |>
+  pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  anti_join(stop_words, by = "word") |>
+  count(word, sort = TRUE) |>
+  slice_max(n, n = 50)
+
+# plot
+ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "steelblue") +
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Posts (Removing Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+
+# tokenize words to count frequencies for Reddit comments, removing stop words
+comments_word_counts <- comments_data_clean |>
+  select(comment) |>
+  pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
+  unnest_tokens(word, value) |>
+  anti_join(stop_words, by = "word") |>
+  count(word, sort = TRUE) |>
+  slice_max(order_by = n, n = 50)
+
+# plot
+ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "lightgreen") +  # Removed extra parentheses
+  coord_flip() +
+  labs(title = "Top 50 Words in Reddit Comments (Removing Stopwords)",
+       x = "Word",
+       y = "Count") +
+  theme_minimal()
+```
+
+The graphs above show the most frequent words used in both Reddit posts and their comment sections.
+We can see that many of these words are directly related to our topic, with frequent mentions of the President, DOGE, the federal government, and RIF.
+
+*Coding Comments*.
+We coded 400 comments chosen at random
+
+```{r}
+comments_data_clean |> 
+  mutate(outcome = replace_na(outcome, "Not Coded")) |> 
+  count(outcome, name = 'Total') |> 
+  
+  kable(caption = "Distribution of favorability coding for 400 comments")
+```
+
+\newpage
+
+## Appendix
+
+```{r}
+posts_data |> distinct(subreddit) |> 
+  kable(caption = "List of subreddits relevant to the topic of DOGE")
+```
