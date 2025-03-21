@@ -37,11 +37,12 @@ library(ggthemes)
 library(tidytext)
 library(knitr)
 library(tidyverse)
+library(patchwork)
 
 
 # path to repo
-#repo_path <- str_c(~/Desktop/UMICH/SURV622_Assignment/data/") # felix
-repo_path <- str_c("~/repos/SURV622_Assignment/data/") # kevin
+repo_path <- str_c("~/Desktop/UMICH/SURV622_Assignment/data/") # felix
+# repo_path <- str_c("~/repos/SURV622_Assignment/data/") # kevin
 
 
 data_files <- list.files(repo_path) |> 
@@ -134,6 +135,8 @@ A look into some of these comments revealed more opinionated statements and reac
 
 ## Results
 
+*Post and Comment Trends*
+
 We show the number of posts pre/post processing by day in Figure 1 during the timeframe that we collected these data..
 There appears to be a noticeable peak in activity during the middle of the week.
 However, we don't have enough data across weeks to conclusively say it's due to the day of the week itself.
@@ -195,141 +198,98 @@ comments_data_clean |>
   theme_hc()
 ```
 
+*Word Frequency*
+
 Most posts occur during the early morning, noon, and afternoon hours (see Figure 3).
 The highest peak is around lunchtime, likely due to people posting during their lunch break.
 There is also significant activity in the afternoon, evening, and early morning.
 This could be because people have more free time or stay up late, allowing them to take the time to write posts, which require more effort than quick interactions.
 The fewest posts are seen in the morning, which makes sense as people are typically getting ready for work, commuting, or sleeping in.
-The trend for comments (see Figure 4) mirrors that of posts.
+The trend for comments (see Figure 3) mirrors that of posts.
 This makes sense because people are likely using Reddit at similar times for both posting and commenting.
 However, the volume of comments is much higher than the number of posts, as each post receives many comments from different users.
 
 ```{r}
-posts_data_clean |> 
-  group_by(hour_posted ) |> 
+# Aggregate posts data
+posts_by_hour <- posts_data_clean |> 
+  group_by(hour_posted) |> 
   reframe(Total = n()) |> 
-  ggplot(aes(x=hour_posted, y=Total)) + 
-  # geom_bar(stat = "identity", fill = "steelblue") + 
-  geom_point(color = "blue", size = 3) +  
-  geom_line(color = "steelblue", linewidth = 1) +
+  mutate(type = "Posts")
+
+# Aggregate comments data
+comments_by_hour <- comments_data_clean |> 
+  group_by(hour_posted) |> 
+  reframe(Total = n()) |> 
+  mutate(type = "Comments")
+
+# Combine both datasets
+combined_data <- bind_rows(comments_by_hour, posts_by_hour)
+
+# Plot with facet_wrap to display them side by side
+ggplot(combined_data, aes(x = hour_posted, y = Total)) + 
+  geom_point(aes(color = type), size = 3) +  
+  geom_line(aes(color = type), linewidth = 1) +
+  scale_color_manual(values = c("Posts" = "steelblue", "Comments" = "lightgreen")) +  # Color distinction
+  facet_wrap(~type, scales = "free_y") +  # Display side by side
   labs(
-    title = "Figure 3. Total Number of Posts by Hour of Day",
+    title = "Figure 3. Total Number of Posts and Comments by Hour",
     subtitle = "(24-hour clock)",
     x = "Hour of Day",
-    y = "Total Number of Posts"
+    y = "Total Count"
   ) +
   theme_minimal() +
-  theme_hc()
-
-comments_data_clean |> 
-  group_by(hour_posted ) |> 
-  reframe(Total = n()) |> 
-  ggplot(aes(x=hour_posted, y=Total)) + 
-  # geom_bar(stat = "identity", fill = "steelblue") + 
-  geom_point(color = "green", size = 3) +  
-  geom_line(color = "lightgreen", linewidth = 1) +
-  labs(
-    title = "Figure 4. Total Number of Comments by Hour of Day",
-    subtitle = "(24-hour clock)",
-    x = "Hour of Day",
-    y = "Total Number of Posts"
-  ) +
-  theme_hc()
+  theme_hc() +
+  theme(legend.position = "none") 
 ```
 
-### What are the words in the set of posts you have assembled that appear most frequently?
+The graphs below (Figure 4) show the most frequent words used in both Reddit posts and their comment sections. These words were identified by tokenizing the text and removing stop words, then counting the occurrences of the most common terms. From the visualizations, we can see that many of these words are directly related to our topic of discussion. Specifically, there are frequent mentions of 'President,' 'DOGE,' 'federal government,' and 'RIF,' which suggest that discussions surrounding political events, cryptocurrency (like Dogecoin), and government-related issues are significant in the posts and comments. This highlights the focus of the community on these key themes, reflecting the ongoing conversations and interests of Reddit users within this context.
 
 ```{r}
-#| fig-width: 6
-#| fig-height: 7
-#| 
-# tokenize words to count frequencies for reddit posts
-posts_word_counts <- posts_data_clean |>
-  select(title, text) |>
-  pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
-  unnest_tokens(word, value) |>
-  count(word, sort = TRUE) |>
-  slice_max(n, n = 50)
-
-# plot
-ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(title = "Top 50 Words in Reddit Posts (Including Stopwords)",
-       x = "Word",
-       y = "Count") +
-  theme_minimal()
-
-# tokenize words to count frequencies for reddit comments
-comments_word_counts <- comments_data_clean |>
-  select(comment) |>
-  pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
-  unnest_tokens(word, value) |>
-  count(word, sort = TRUE) |>
-  slice_max(n, n = 50)
-
-# plot
-ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
-  geom_col(fill = "lightgreen") +  # Removed extra parentheses
-  coord_flip() +
-  labs(title = "Top 50 Words in Reddit Comments (Including Stopwords)",
-       x = "Word",
-       y = "Count") +
-  theme_minimal()
-```
-
-The graphs above show the most frequent words in both Reddit posts and their comments.
-However, many of these words are stopwords, which don't provide much insight into the actual content of the discussions.
-To get a better understanding of what people are really talking about, we will remove these stopwords in the next step.
-
-### How does this change if you exclude “stop words” such as “a,” “an,” “the,” “is,” and others that are common in English sentences but are generally not informative?
-
-```{r}
-#| fig-width: 6
-#| fig-height: 7
-#| #| 
-# tokenize words to count frequencies for reddit posts removing stop words
+# Tokenize words and count frequencies for Reddit posts
 posts_word_counts <- posts_data_clean |>
   select(title, text) |>
   pivot_longer(cols = c(title, text), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
   anti_join(stop_words, by = "word") |>
   count(word, sort = TRUE) |>
-  slice_max(n, n = 50)
+  slice_max(n, n = 25)
 
-# plot
-ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
-  geom_col(fill = "steelblue") +
-  coord_flip() +
-  labs(title = "Top 50 Words in Reddit Posts (Removing Stopwords)",
-       x = "Word",
-       y = "Count") +
-  theme_minimal()
-
-# tokenize words to count frequencies for Reddit comments, removing stop words
+# Tokenize words and count frequencies for Reddit comments
 comments_word_counts <- comments_data_clean |>
   select(comment) |>
   pivot_longer(cols = c(comment), values_drop_na = TRUE) |>
   unnest_tokens(word, value) |>
   anti_join(stop_words, by = "word") |>
   count(word, sort = TRUE) |>
-  slice_max(order_by = n, n = 50)
+  slice_max(order_by = n, n = 25)
 
-# plot
-ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
-  geom_col(fill = "lightgreen") +  # Removed extra parentheses
+# Plot for posts
+plot_posts <- ggplot(posts_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "steelblue") +
   coord_flip() +
-  labs(title = "Top 50 Words in Reddit Comments (Removing Stopwords)",
-       x = "Word",
+  labs(x = "Word",
        y = "Count") +
   theme_minimal()
+
+# Plot for comments
+plot_comments <- ggplot(comments_word_counts, aes(x = reorder(word, n), y = n)) +
+  geom_col(fill = "lightgreen") +
+  coord_flip() +
+  labs(x = "Word",
+       y = "Count") +
+  theme_minimal()
+
+# Combine them side by side using patchwork
+combined_plot <- plot_posts + plot_comments + plot_layout(ncol = 2) + plot_annotation(title = "Figure 4. Top 25 Words in Reddit Posts and Comments")
+
+# Display the combined plot
+combined_plot
+
 ```
 
-The graphs above show the most frequent words used in both Reddit posts and their comment sections.
-We can see that many of these words are directly related to our topic, with frequent mentions of the President, DOGE, the federal government, and RIF.
+*Coding Comments*
 
-*Coding Comments*.
-We coded 400 comments chosen at random
+We randomly selected and coded 400 comments from the Reddit posts. The table below shows the distribution of favorability coding for these comments. Among the 400 comments, the majority (217) expressed opposition to DOGE's approach to reducing the federal workforce, while 110 were supportive, and 73 remained neutral. A large number of comments (12,153) were not coded, as their content was not relevant for favorability assessment.
 
 ```{r}
 comments_data_clean |> 
@@ -338,6 +298,14 @@ comments_data_clean |>
   
   kable(caption = "Distribution of favorability coding for 400 comments")
 ```
+
+## Conclusion
+
+In this study, we explored the impact of the Department of Government Efficiency’s (DOGE) actions on federal workers’ perceptions of job security, using Reddit as a platform to analyze public discourse. By examining Reddit posts and comments related to DOGE’s workforce reduction policies, we gained valuable insights into the sentiments of both federal workers and the broader public. Our findings indicate that these discussions are heavily influenced by political events and high-profile figures, such as President Trump and Elon Musk, with particular attention given to DOGE’s controversial cost-cutting measures. Through the analysis of both posts and comments, we captured a wide range of reactions, with the majority being strongly opposed to DOGE’s approach. The frequent mention of terms like ‘President,’ ‘DOGE,’ ‘federal government,’ and ‘RIF’ underscores the community’s focus on government policies and the emotional responses these issues generate.
+
+In terms of favorability, the distribution of comments revealed that 217 out of 400 were opposed to DOGE’s approach, 110 were supportive, and 73 were neutral. Additionally, patterns in post volume, especially peaks during significant news events, highlight the dynamic nature of these discussions, providing insights into the timing and public reactions to key policy decisions. While our study provides a snapshot of Reddit discussions during a specific period, the findings demonstrate the value of social media platforms like Reddit in capturing public sentiment on contemporary political and policy issues. However, it’s important to note that Reddit may not fully represent the broader population’s views, as the platform tends to skew younger and more politically engaged, potentially limiting the generalizability of these findings.
+
+Furthermore, the use of sentiment analysis on social media presents challenges, as it can be influenced by sarcasm, humor, or polarized language, which might affect the accuracy of sentiment classification. The specific subreddits analyzed, while designed to capture diverse perspectives, may still over-represent certain political or ideological viewpoints. Additionally, the relatively short timeframe of this analysis—spanning only March 2-10, 2025—means that we may not have captured long-term trends or shifts in sentiment as the DOGE policies unfold. Future research could address these limitations by expanding the data collection to other platforms or a longer timeframe and by incorporating demographic data to better understand the views of different Reddit user groups.
 
 \newpage
 
