@@ -141,7 +141,7 @@ We then randomly selected 400 comments (without replacement) and assigned them t
 
 We show the number of posts pre/post processing by day in Figure 1 during the timeframe that we collected these data.
 There appears to be a noticeable peak in activity during the middle of the week.
-However, we don't have enough data across weeks to conclusively say it is due to the day of the week itself.
+However, we do not have enough data across weeks to conclusively say it is due to the day of the week itself.
 It is more likely that these spikes are linked to specific events that occurred on those days, which sparked conversations.
 The two peaks in our graph could be attributed to two major news stories.
 On March 5th, Elon Musk made a statement about wanting to "save Western civilization from empathy," and on March 6th, there were reports that President Trump was limiting Musk's authority due to backlash over cuts to DOGE.
