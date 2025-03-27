@@ -1,0 +1,286 @@
+---
+title: "Assignment 2"
+author: Group 2
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+embed-resources: true
+editor: visual
+execute:
+  warning: false
+  message: false
+  error: false
+  tidy: true
+format: pdf
+theme: spacelab
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(writexl)
+library(fedmatch)
+# install.packages("devtools")
+# devtools::install_github('ivan-rivera/RedditExtractor')
+library(RedditExtractoR)
+library(tidyverse)
+
+```
+
+# Hitting the Reddit API
+
+1.  Use the Reddit API to “listen” to and download a corpus of posts using the RedditExtractoR package in R
+
+-   For this work, we focus on the topic of **Department of Government Efficiency and the Federal Workforce** as of the new US administration in early January of this year. This topic can help examine DOGE's impact on government employees by exploring perceptions and approval of:
+
+    -   The effects of remote work policies.
+
+    -   Changes in job security.
+
+    -   Impact on work culture
+
+    -   Employee reactions to efficiency measures.
+
+-   We expect that reddit will contain lively discussions surrounding this topic and offer us as researchers a vantage into the public's real time opinions and diverse perspective. Initially we examined how this topic is referred to on Reddit and finalized a list of keywords that will help us uncover aspects of this topic. However, during this stage we found that the cryptocurrency DOGEcoin, established in 2013, will also be captured using these kerterms and is unrelated with our topic. To minimize capturing threads on DOGEcoin, we will limit our search to this year only, as well as later in the process filter out specific keywordsthat are not related to our topic. Our final adjustment of this keywords list consisted of iterating over searches and broadening our keywords as needed to have a large corpus of posts.
+
+-   Additionally, we collectively went through several subreddit after the first scrap of these keywords to determine relevant subreddit channels to listen to. Our list attempts to compile subreddit channels that favor both sides of this topic.
+
+-   As we prepare our data on our topic we discover that some threads have no text but rather only a video, image, or weblink. We made the decision to exclude threads with no text as we will not be able to determine approval. Additionally, threads that only provide a weblink are excluded as well.
+
+    -   We build a list of keywords related to our topic.
+
+```{r}
+# list of keywrods to try
+topic_list <- c("DOGE", 
+                #"elon musk",
+                "Department of Government Efficiency", 
+                "wasteful spending",
+                "government waste", 
+                "government fraud", 
+                #"drain the swamp",  
+                "reduction in force", 
+                "rif",
+                "fork in the road"
+                )
+
+subreddit_list <- c("50501", "fednews", 
+                    "neoliberal", "FedEmployees", "WhatTrumpHasDone",
+                    "Whistleblowers", "economy",
+                    "PoliticalOpinions",
+                    "Trumpvirus", "Virginia", 
+                    "Libertarian", "AskTrumpSupporters",
+                    "AskPolitics", "AskConservitives",
+                    "govfire", "conservative", "VeteransAffairs",
+                    "economicCollapse",
+                    "feddiscussion",  
+                    "maryland"
+                    )
+
+# Lets create a grid to loop through kewwords and subreddits
+
+search_grid <- expand_grid(topic_list, subreddit_list)
+
+
+```
+
+We begin by first reading in all posts from 1/1/2025 to
+
+```{r find_thread_url, message=FALSE, warning=FALSE}
+
+# query each keyword through the api
+
+#_________ Helpful functions _______________
+
+hit_api_fun = function(topic_var, subreddit_var){
+  
+  dat = find_thread_urls(keywords=topic_var, 
+                         period = "hour", 
+                         subreddit = subreddit_var) |> 
+    tibble() |> 
+    mutate(search_term = topic_var) |> 
+    drop_na()
+  
+  if(nrow(dat) < 1){
+    cat(str_c("\n  . . . Skipping, search returned NA . . . \n",
+        Sys.time()))
+    
+    
+  } else{
+    cat(str_c("\n\n Reading in data file . . . 
+              writing new lines, saving to file . . . \n",
+              Sys.time()))
+    
+    # read file, write new rows, save 
+    old_dat = readRDS("D:/repos/SURV622_Assignment/data/posts_data.RDS")
+    new_dat = old_dat |> add_row(dat |> tibble())
+    write_rds(new_dat, "D:/repos/SURV622_Assignment/data/posts_data.RDS")
+  }
+  
+  # sleep 
+  Sys.sleep(26) 
+  
+}
+
+# ______________ Initiate Code Sequence
+
+# days to listen for
+num_days <- 5 * 24 # days * hours
+
+# repeat process for several days
+replicate(n=num_days,
+          
+          walk(seq(1:nrow(search_grid)), function(x){
+            cat(str_c("\n Searching for \nkeyword = ", 
+                      search_grid[[x, 1]], " in subreddit = ", 
+                      search_grid[[x, 2]], "\n"))
+            
+            posts = hit_api_fun(search_grid[[x, 1]],  search_grid[[x, 2]]) 
+            }) 
+)
+             
+
+```
+
+Read in the full dataset to begin the cleaning process.
+
+```{r}
+reddit_unclean <- readRDS("~/repos/SURV622_Assignment/data/posts_data.RDS")
+
+```
+
+We will clean the data to remove posts that are only images, URLs, videos, contain irrelevant keywords such as "cryptocurrency" or "dodgecoin," and finally we remove posts that are brief.
+
+-   We listened for five days every hour, yet we needed to add additional posts as we did not have enough. Instead, we add posts starting from 2/24/25 when the project started. This way we have almost \~900 posts after cleaning the found data set.
+-   Note. Some posts are related meaning that the more than one keyword may show up. Identify the duplicates, and just keep one. We don't really care for keyword search after this point, so we can drop it.
+
+```{r}
+
+reddit_post <- reddit_unclean |>
+  # set timeline threshold 
+  filter(date_utc > "2025-03-01") |> 
+  # function we created
+   tibble() |> 
+   mutate(
+          # remove urls from text using rm_url function
+      text = qdapRegex::rm_url(text),
+      # clean text from unwanted character
+      text = clean_strings(text),
+      date_utc = ymd(date_utc) ) |> 
+   filter(# remove none related topic threads
+           !str_detect(text, "crypto|coin")) |> 
+  # drop duplicates
+  distinct_at(vars(-search_term, -comments)) 
+
+
+  # bring back search terms
+reddit_post <- reddit_post |> 
+  left_join(
+    reddit_unclean |> 
+      group_by(comments) |> 
+      filter(comments == max(comments)) |> 
+      group_by(url) |> 
+      mutate(id = row_number()) |> 
+      # keep first of x number of posts
+      filter(id==min(id)) |> 
+      select(url, search_term, comments)
+    )
+
+
+```
+
+We now need to get the comments within each post. This will bring us back a list, and we will need to extract the post metadata and comments into separate data tables.
+
+```{r}
+# pass the urls collected from the post
+reddit_content <- map(seq_along(reddit_post$url), function(x){
+  
+  print(x)
+  
+  thread = get_thread_content(reddit_post$url[x])
+  
+  # let it sleep so it doesn't hit the max per hour
+  Sys.sleep(5)
+  
+  return(thread)
+}) 
+```
+
+-   Separate post metadata and merge as new columns into the reddit posts data set we extracted from our initial data collection.
+-   We need a column that can join posts with comments. Currently, the URL column can do this but it is long. Let's assign a unique ID while enriching this dataset.
+
+```{r}
+# collect metadata
+reddit_metadata <- map_dfr(reddit_content, function(x){
+  
+  dat = x$threads
+}) |> 
+  mutate(date = ymd(date)) |> 
+  rename(date_utc = date) 
+
+# add new columns to our working data
+reddit_post <- reddit_post |> 
+  add_column(reddit_metadata |> 
+               select(score:cross_posts)) |> 
+  arrange(date_utc) |>
+  # assign IDs to posts
+  mutate(post_id = row_number())
+```
+
+-   We can now create a dataframe of the comments from the list that we compiled above.
+
+```{r}
+reddit_comments <- map(reddit_content, function(x){
+  
+  # pass the list element that houses comments
+  x$comments |> 
+    tibble() |> 
+    mutate_all(as.character)
+}
+) |> 
+  # ger rid of NULL, no comments
+  discard(is_null) |>
+  # put data in data frame structure
+  bind_rows() |> 
+  # remove duplicates
+  distinct() |> 
+  # retain variable types
+  mutate(
+    # remove URL links
+    comment = qdapRegex::rm_url(comment),
+    # clean comment strings
+    comment = clean_strings(comment),
+    date = ymd(date), 
+    timestamp = as.double(timestamp),
+    # if no text in comment, code as NA
+    comment = na_if(comment, "")) |> 
+  rename(date_utc = date) |> 
+  filter(!is.na(comment),
+         # remove none related topic threads
+         !str_detect(comment, "crypto|coin"),#,
+         # drop text that are one or two words
+         str_count(comment, " ") >= 12
+  ) 
+
+```
+
+The comments are still missing subreddit and keyword search information. We will join this information from the reddit_clean data.
+
+```{r}
+reddit_comments <- reddit_comments |> 
+  left_join(
+    # select needed variables
+    reddit_post |> 
+      select(url, subreddit, search_term, post_id)
+  )
+
+glimpse(reddit_comments)
+```
+
+Finally, we check in two additional datasets into github, the posts, and the comments.
+
+```{r}
+# write posts data
+writexl::write_xlsx(reddit_post, "~/repos/SURV622_Assignment/data/posts_data_clean.xlsx")
+
+# write comments data
+writexl::write_xlsx(reddit_comments, "~/repos/SURV622_Assignment/data/comments_data_clean.xlsx")
+
+```

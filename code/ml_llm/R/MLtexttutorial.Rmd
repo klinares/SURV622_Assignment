@@ -1,0 +1,380 @@
+---
+title: "Machine Learning for Automated Stance Detection"
+output:
+  html_document:
+    df_print: paged
+  html_notebook: default
+  pdf_document: default
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(cache=TRUE, warning=FALSE, message=FALSE)
+```
+
+This notebook gives a simple example of using supervised machine learning to automatically detect stance of topic from tweets. There's a lot of code here -- feel free to copy and paste much of it as you work on the exercises and you do your assignment. This is also only barely scratching the surface, and intended to be as transparent of an introduction as possible in terms of showing how everything is done. Of note, the `caret` package in R can be extremely helpful in doing some of what's done here with much less code involved (see https://www.machinelearningplus.com/machine-learning/caret-package/ for more information). However, there's somewhat of a learning curve associated with it, as well as the inability to see how everything works, so I only use the `caret` package to do a few things, like calculating precision and recall.
+
+```{r}
+# If you have not installed these, make sure to install first!
+
+# Tidyverse and text analysis tools
+library(tidyverse)
+library(tidytext)
+
+# Package for text mining
+library(tm)
+
+# Package for Stemming and Lemmatizing 
+library(textstem)
+
+# For SVM
+library(e1071)
+
+# For nearest neighbors
+library(class)
+
+# For ML evaluation
+library(caret)
+```
+
+# Data
+
+We downloaded the data from SemEval2016 website, and the details of the dataset can be seen in [SemEval2016 Task 6](https://aclanthology.org/S16-1003/). 
+
+```{r}
+semeval_stance <- read.csv('../../data/SemEval2016-testdata-taskA-all-annotations.csv', stringsAsFactors = FALSE,)
+semeval_stance$ID <- as.character(semeval_stance$ID) # Need to make this character for later joins
+semeval_stance$Stance <- as.factor(semeval_stance$Stance) #Convert Char to Factor
+# Also we need to remove #SemST from the Tweet column
+semeval_stance$Tweet <- gsub("#SemST", "", semeval_stance$Tweet)
+glimpse(semeval_stance)
+```
+
+Here, we have a few key variables. The `ID` variable is simply numbers from 1 to 4036, denoting the unique tweet. The tweet's `Target` and `Tweet` (i.e., the content) are all included. Finally, the `Stance` denotes what opinion the tweets express, Favore, Oppose, or . Our goal is to build a machine learning model that takes this data and is able to predict the topic of the tweet based on the content of the tweet. 
+
+We want to do the following steps to turn this text data into features:
+
+-**Tokenize:** Split up the tweets into individual words
+
+-**Stop Words:** Remove words that are too frequent and uninformative, like "a", "an", and "the".
+
+-**Bag of Words:** We want columns representing all words in the entire corpus, and the rows representing tweets, with each cell indicating the counts of words in that tweet. This matrix is also known as a term-document matrix.
+
+We'll look at the distribution of words as we go to inform how we're doing. Let's first tokenize and then look at what words in our corpus. First, let's tokenize and count the number of instances of each word. The key function we're using here is `unnest_tokens`, which we're using the break up the big tweet string for each tweet into individual strings with just one word each.
+
+```{r}
+semeval_stance %>% 
+  unnest_tokens(word, 'Tweet') %>%  # tokenize
+  count(word, sort = TRUE) %>% # count by word
+  arrange(desc(n)) %>% # Everything from this point on is just to graph
+  head(20) %>%
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat= 'identity') + 
+  coord_flip()
+```
+
+Looks like there are a lot of stop words being caught! Let's take those out. To do this, we use the `stop_words` from the `tidytext` package and use an `anti_join` to remove all instances of that word. 
+
+```{r}
+semeval_stance %>% 
+  unnest_tokens(word, 'Tweet') %>%  # tokenize
+  anti_join(stop_words)%>% # Remove stop words
+  count(word, sort = TRUE) %>% # count by word
+  arrange(desc(n)) %>% # Everything from this point on is just to graph
+  head(20) %>% 
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat= 'identity') + 
+  coord_flip()
+```
+
+That looks better! Let's also take a look at the distribution of word counts by using a histogram on a log scale. 
+
+```{r}
+semeval_stance %>% 
+  unnest_tokens(word, 'Tweet') %>%  # tokenize
+  anti_join(stop_words)%>% # Remove stop words
+  count(word, sort = TRUE) %>%
+  ggplot(aes(n)) +
+  geom_histogram() +
+  scale_x_log10()
+```
+
+
+It looks like we have a lot of words that only happen once, or otherwise very infrequently. We'll also remove some of the most infrequent words, as they are likely typos, or are so rare that they are not useful. The threshold is arbitrary and very much depends on the corpus itself. Here we will remove words that occur less than 2 times.
+
+```{r}
+semeval_stance %>% 
+  unnest_tokens(word, 'Tweet') %>%  # tokenize
+  anti_join(stop_words)%>% # Remove stop words
+  count(word, sort = TRUE) %>% # count by word
+  filter(n >= 2) %>%  # Remove words that occur less than 2 times
+  ggplot(aes(n)) +
+  geom_histogram() +
+  scale_x_log10()
+```
+
+Now that we've explored the data a little bit and know what steps we should take to clean it up, we can create our features. From this exercise, we know we need to tokenize, remove stop words, and remove infrequent words. We can also take additional steps at this stage to clean up the data a bit more. For example, we might consider removing all numbers or digits. We can think about stemming (or lemmatization) in order to group similar words together under a single root (e.g., invent, invention, inventor). If we were to stem (this step is optional, and it's actually possible your models run better without stemming), it might look something like this:
+
+```{r}
+# NOTE: This uses the corpus package, which we did not bring in at the beginning
+semeval_stance %>% 
+  unnest_tokens(word, 'Tweet') %>%  # tokenize
+  anti_join(stop_words)%>% # Remove stop words
+  mutate(word = lemmatize_words(word) %>% unlist()) %>% # add stemming process
+  count(word, sort = TRUE) %>% # count by word
+  filter(n >= 10) %>%  # Remove words that occur less than 10 times
+  arrange(desc(n)) %>% # Everything from this point on is just to graph
+  head(20) %>% 
+  ggplot(aes(x = reorder(word, n), y = n)) +
+  geom_bar(stat= 'identity') + 
+  coord_flip()
+```
+
+## Creating Features
+
+To create the features for our machine learning model, we will take all of the words in our corpus and count the number of times that they appear in the tweet. We will end up with a sparse term-document frequency matrix, with the columns representing each word, and rows representing the tweet. 
+
+In this section, we will use the `tm` package to construct the feature matrix, as it offers a more convenient and intuitively interpretable approach.
+
+Let's go over the steps to create the term-document frequency matrix:
+
+1. lower all character
+2. remove numbers, punctuation, and stop words
+3. Stemming or lemmatization
+
+Using `tm` package, we first need to create a corpus, which is a collection of text documents. We can then use the `tm_map` function to apply a series of text processing steps to the corpus. 
+
+```{r}
+tweet_corpus = Corpus(VectorSource(semeval_stance$Tweet))
+# text preprocessing
+# Lower text
+tweet_corpus = tm_map(tweet_corpus, content_transformer(tolower))
+# Remove numbers, pubctuation, and stop words
+tweet_corpus = tm_map(tweet_corpus, removeNumbers)
+tweet_corpus = tm_map(tweet_corpus, removePunctuation)
+tweet_corpus = tm_map(tweet_corpus, removeWords, c("the", "and", stopwords("english")))
+# Lemmatization
+tweet_corpus = tm_map(tweet_corpus, lemmatize_words)
+```
+
+After text preprocessing, we can create the term-document frequency matrix simply using the `DocumentTermMatrix` function. 
+
+```{r}
+tweet_dtm = DocumentTermMatrix(tweet_corpus)
+# Take a look at tweet_dtm
+tweet_dtm
+```
+As we mentioned before, most of cases, the matrix will be sparse because most of the words will not appear in most of the tweets. We can use the `inspect` function to take a look at the first few rows and columns of the matrix. 
+
+```{r}
+inspect(tweet_dtm)
+```
+One way to address the sparsity of the matrix is to remove infrequent words, as we demenstracted before. We can use the `removeSparseTerms` function to remove words that appear in less than a certain percentage of the tweets. 
+
+```{r}
+tweet_dtm = removeSparseTerms(tweet_dtm, 0.99)
+# Inspect the matrix again
+inspect(tweet_dtm)
+```
+By specifying `0.99`, we are removing words that appear in less than 1% of the tweets. notably, we only have 105 unique terms left.
+
+
+```{r}
+# Convert the matrix to a data frame
+tweet_dtm_df = as.data.frame(as.matrix(tweet_dtm))
+
+# Add the ID, Stance variable to the data frame
+tweet_dtm_df$ID = semeval_stance$ID
+tweet_dtm_df$Stance = semeval_stance$Stance
+
+```
+
+
+The full data contains the ID variable (which we will use to make our train/test split in the next section), as well as our features (each word) and the label (True/False for whether the topic was on cell biology or not)
+
+Here, you might consider doing a bit more feature engineering and data manipulation. For example, you might consider scaling the variables, in order to avoid the influence of more frequent words. You can try cleaning the text data a bit more, to remove certain words that might be stop words in this specific context. You can also consider adding additional variables, such as length of tweet in number of words. 
+
+## Train and Test Split
+
+For simplicity, we'll consider a simple holdout sample. At the end, we show how to do cross validation using the `caret` package in R. The cross validation code will be very similar to this, except repeated for multiple combinations of training and testing data.
+
+```{r, message=FALSE}
+# 30% holdout sample
+test <- tweet_dtm_df %>% sample_frac(.3)
+
+# Rest in the training set
+train <- tweet_dtm_df %>% anti_join(test, by = 'ID') %>% select(-ID)
+
+# Remove ID after using to create train/test
+# We don't want to use ID to run models!
+test <- test %>% select(-ID)
+```
+
+# Fitting Models
+
+Now, we can fit some machine learning models. We'll do some simple ones here: K-Nearest Neighbors and Support Vector Machine (SVM). You can also use Logistic Regression, or Naive Bayes, or Decision Trees, or any number of other, more complicated models, though we won't cover them here. If you are familiar with ensemble models, such as Random Forests, I'd suggest trying those out as well.
+
+## First attempt at a model
+
+Let's start with a K-Nearest Neighbors model. This simply checks the class of closest k neighbors, and takes a vote of them to predict what the class of the data point will be. We can fit this model using the `class` package.
+
+```{r}
+# Create separate training and testing features and labels objects
+train_features <- train %>% select(-Stance)
+test_features <- test %>% select(-Stance)
+
+train_label <- train$Stance
+test_label <- test$Stance
+
+# Predicted values from K-NN, with K = 3
+knnpred <- knn(train_features,test_features,train_label, k = 3)
+```
+
+The `knnpred` object has the predicted values for each of the `test_features` that we gave it. Let's take a look at what the predicted values are. We'll put the predicted values in a data frame with the actual values.
+
+```{r}
+pred_actual <- data.frame(predicted = knnpred, actual = test_label)
+pred_actual %>% head()
+```
+
+Now that we have the predicted and actual values in one data frame, we can create a confusion matrix and evaluate how well our model is performing. 
+
+```{r}
+pred_actual %>% table()
+confusionMatrix(pred_actual %>% table())
+```
+
+Note that we don't actually see the words "precision" or "recall" here -- instead, we can find them by their alternate names: sensitivity (for recall) and positive predictive value (for precision). We can also use the `precision` and `recall` functions (also in the `caret` package). Note that we use `relevant` to specify which outcome we're trying to predict (similar to the `positive` argument above).
+
+
+## Running a Support Vector Machine
+
+With the training and testing datasets that we've created, running the actual tree model is actually quite simple. If you have used `R` for running linear models before, the format is very similar.
+
+```{r}
+svmfit <- svm(Stance ~ ., 
+              data = train, 
+              kernel = 'linear', 
+              cost = 10)
+```
+
+Let's break down each of the arguments in this function. First, we specify the model, putting the label that we want to predict on the left side of the "~" and all the features we want to include on the right. We include arguments for the dataframe from which we're taking the data, and the kernel method we want to use. Then, we can use the `cost` argument to specify the regularization term.
+
+We have stored the model in the `svmfit` object. Let's look at what the model gave us. We can use summary to look at the summary of the model.
+```{r}
+# You can try running the summary, but it will give a LOT of output
+summary(svmfit)
+```
+
+### Evaluating the Model
+Now that we have a model, we need to test it. We can get predictions using the `predict` function.
+
+```{r}
+pred <- predict(svmfit, test)
+head(pred)
+```
+
+We can get the values of precision and recall using `confusionMatrix` function from the `caret` package. First, we create a table with the confusion matrix, then run the function with the table as the argument. 
+
+```{r}
+# Construct the confusion matrix
+pred_actual <- data.frame(predicted = pred, actual = test_label)
+pred_actual %>% head()
+confusionMatrix(pred_actual %>% table())
+```
+
+### Looping through models
+
+We've shown an example of two different types of models: K-Nearest Neighbors and SVM. In the real world, we would want to try many different models with many different values for the tuning parameters (e.g., K for K-NN, cost or gamma for trees). Using a loop, we can automatically run through many different models very quickly. Below is an example of trying many different SVM models. 
+
+```{r}
+# We will look at gamma values of 0.1, 1, 10, 100
+gammas <- c(0.1, 1, 10, 100)
+
+# We'll look at cost values of 0.1, 1, 10, 100, 1000
+costs <- c(0.1, 1, 10, 100)
+
+# We'll consider different kernel types
+kernels <- c('linear', 'radial', 'polynomial')
+
+# How many different models are we running?
+nmods <- length(gammas)*length(costs)*length(kernels)
+
+# We will store results in this data frame
+results <- data.frame(gammas = rep(NA,nmods), 
+                      costs = rep(NA, nmods),
+                      kernel = rep(NA,nmods),
+                      precision = rep(NA,nmods),
+                      recall = rep(NA,nmods))
+
+# The model number that we will iterate on (aka models run so far)
+mod_num <- 1
+
+# The loop
+for(i in 1:length(gammas)){
+  for(j in 1:length(costs)){
+    for(k in 1:length(kernels)){
+        g <- gammas[i]
+        c <- costs[j]
+        kn <- kernels[k]
+        # Running the model
+
+        svmfit <- svm(Stance ~ ., 
+                      data = train, 
+                      gamma = g,
+                      cost = c,
+                      kernel = kn)
+          
+        # Find the predictions
+        pred <- predict(svmfit, test)
+          
+        # Attach scores to the test set
+        # Then sort by descending order
+        pred_actual <- data.frame(predicted = pred, actual = test_label)
+        pred_table <- pred_actual %>% table()
+        
+      
+        # Store results and we set AGAINST as referent category and turn the          results into a binary classification. 
+        results[mod_num,] <- c(g, 
+                               c,
+                               kn,
+                               precision(pred_table, relevant = 'AGAINST'), 
+                               recall(pred_table, relevant = 'AGAINST'))
+        # Increment the model number
+        mod_num <- mod_num + 1
+    }
+  }
+}
+
+# All results are stored in the "results" dataframe
+head(results)
+
+# Best recall? Top 5 in descending order
+results %>% arrange(desc(recall)) %>% head()
+
+# Best precision? Top 5 in descending order
+results %>% arrange(desc(precision)) %>% head()
+```
+
+You can also loop through many different values of K for K-NN, and also different tuning parameters for other types of models. For example, for Logistic Regression, you might consider an L1 or L2 penalty (Lasso or Ridge Regression), with different values for the penalty parameter.
+
+## Simplifying the Process with Caret
+
+We've already used the `caret` package for tools like the confusion matrix and precision/recall. However, we can also use it to do other validation methods more easily, such as k-fold cross validation. Here, we'll look at a quick example of using `caret` to find the training and test sets need to do 10-fold cross validation.
+
+```{r}
+# Create a list of 10 folds (each element has indices of the fold)
+flds <- createFolds(tweet_dtm_df$ID, k = 10, list = TRUE, returnTrain = FALSE)
+str(flds)
+```
+
+
+As you can see, we created a list of 10 vectors, each containing a fold. So, to do our 10-fold cross validation, we can take the first fold, and create our train and test sets from that, take the second fold and create test and train from that, and so on. For example, to create test and train using the first fold, we can use the following code:
+
+```{r}
+# Create train and test using fold 1 as test
+stance_test01 <- tweet_dtm_df[flds$Fold01,]
+stance_train01 <- tweet_dtm_df[-flds$Fold01,]
+```
+
+You can then use these train and test sets as we have above. You should put this into a loop, and store the value of metrics such as accuracy, precision, and recall, similar to what we've done in the loop of trying out different parameters.
