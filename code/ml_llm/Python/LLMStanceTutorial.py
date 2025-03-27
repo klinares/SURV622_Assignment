@@ -20,7 +20,8 @@ stance["Tweet"] = stance["Tweet"].str.replace("#SemST", "")
 model_name = "google/gemma-3-12b-it"  # 8x7B MoE model\
 tokenizer = AutoTokenizer.from_pretrained(model_name)  # Load tokenizer
 model = AutoModelForCausalLM.from_pretrained(
-    model_name, device_map=device
+    model_name, device_map=device,
+    # pass huggingface token using token = "<token key>", do not save token in code!
 )  # Load model
 
 # Loop through the tweets and generate the stance
