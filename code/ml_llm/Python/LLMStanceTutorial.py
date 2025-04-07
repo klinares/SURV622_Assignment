@@ -12,7 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from huggingface_hub import login
 
 # Read the token from the file
-with open("/Users/felbasa/Desktop/token.txt", "r") as token_file:
+with open("/home/felbasa/token.txt", "r") as token_file:
     token = token_file.read().strip()
 
 # Log in to Hugging Face using the token
