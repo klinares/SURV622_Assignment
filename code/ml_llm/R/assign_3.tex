@@ -147,7 +147,7 @@
 \IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
 \urlstyle{same} % disable monospaced font for URLs
 \hypersetup{
-  pdftitle={DOGE Days on Reddit: Decoding Public Sentiment in a Federal Shakeup},
+  pdftitle={DOGE's Downsizing, Can AI Read the Reddit Room?},
   pdfauthor={Kevin Linares; Felix Baez-Santiago; Aria Lu; Gloria Zhou},
   pdfkeywords={Reddit, Federal Government, DOGE},
   colorlinks=true,
@@ -168,9 +168,8 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\date{April 7, 2025}
-\title{\bf DOGE Days on Reddit: Decoding Public Sentiment in a Federal
-Shakeup}
+\date{April 8, 2025}
+\title{\bf DOGE's Downsizing, Can AI Read the Reddit Room?}
 \author{
 Kevin Linares\\
 University of Maryland\\
@@ -184,17 +183,16 @@ University of Michigan\\
 \bigskip
 \bigskip
 \begin{abstract}
-This study investigates public sentiment on Reddit towards the
-Department of Government Efficiency's (DOGE) federal workforce
-reduction. Analyzing 400 labeled Reddit comments, we employed supervised
-learning (KNN, Random Forest) and unsupervised Large Language Models
-(LLMs: Llama 3.2 3B, deepseek-r1:8b) to classify comment stance (favor,
-neutral, oppose). While LLMs showed higher precision for opposing
-comments, all models struggled with neutral and favoring stances.
-Agreement between the two LLMs was fair (Cohen's Kappa = 0.344),
-indicating divergent interpretations. Results suggest that accurately
-decoding nuanced public sentiment in this context remains challenging
-for both traditional and large language models.
+We investigate public sentiment on Reddit regarding the Department of
+Government Efficiency's federal workforce reduction by classifying 400
+labeled comments (28\% favor, 18\% neutral, 54\% oppose) using
+supervised and unsupervised Large Language Models. Supervised models
+showed moderate success, particularly with ``oppose'' comments, but
+struggled with ``favor'' and ``neutral'' stances. Similarly, LLMs best
+identified ``oppose'' sentiment but exhibited low precision for
+``favor'' and ``neutral.'' These findings highlight the challenges of
+accurately gauging nuanced public opinion on government policy changes
+using automated methods on social media data.
 \end{abstract}
 
 \noindent%
@@ -207,27 +205,24 @@ for both traditional and large language models.
 
 \section{Introduction}\label{sec-intro}
 
-Established in January 2025, the Department of Government Efficiency
-(DOGE) has significantly reduced the federal workforce by over 280,000
-employees, fulfilling a key campaign promise of the new administration.
-This has caused widespread concern and anxiety among federal workers
-about job security and mental well-being. Questions have also been
-raised regarding DOGE's adherence to internal policies. To understand
-the impact of DOGE's actions on federal worker perceptions of job
-security, we collected 400 reddit comments on topics related to DOGE's
-tactics in reducing the federal workforce. Additionally, a team of
-researchers labeled each comment as whether the author favored, opposed,
-or had a neutral stance concerning how DOGE was implementing these
-strategies. In the current study we employ two supervise learning model
-to predict, given a set of features, comments on stance. We also employ
-an unsupervised large language model (LLM) to detect the stance of these
-reddit comments and report model findings.
+The newly formed Department of Government Efficiency (DOGE) has reduced
+the federal workforce by almost 280,000 employees, a central pledge of
+the current administration. This action has generated significant
+apprehension among federal workers in regards to mental health and job
+security. To understand the impact of DOGE's actions on federal worker
+perceptions of job security, we labeled 400 Reddit comments on topics
+related to the current reduction in \emph{federal} workforce by DOGE as
+whether the author favored, opposed, or had a neutral stance. We use
+these labels to build supervised learning models to predict stance.
+Additionally, we employ unsupervised large language models (LLM) to
+detect the stance of these Reddit comments from text, to further explore
+appropriate models for this current topic.
 
 \section{Methods}\label{sec-meth}
 
 \emph{Data}. We collected Reddit comments from subreddits related to the
 topic of interest in early March of 2024. This resulted in 12,553
-comments which we preprocessed by removing weblinks, replace special
+comments which we preprocessed by removing web-URLs, replace special
 characters (i.e., replaced ``@'' with ``at''), replaced numeric values
 with their spelling, and confirmed the absence of duplicate comments. We
 then randomly selected 400 comments (without replacement) and assigned
@@ -255,101 +250,109 @@ neutral & 18 \\
 oppose & 54 \\
 \end{longtable}
 
-We built two supervised machine learning models, K-nearest neighbor and
-random forest, to classify Reddit comments concerning stance on the
+We built two supervised machine learning models--K-nearest neighbor and
+random forest--to classify Reddit comments concerning stance on the
 current reduction in federal workforce into favor, oppose, or neutral.
-For model predictors we used the Reddit score, up-votes, and down-votes
-each comment received at the time of the collection. Additionally, we
-used the keyword that was used to scrape these data along with the
-subreddit where the comment was posted. DISCUSS ADDITIONAL FEATURE
-ENGINERRING SUCH AS TEXT EDITING THAT WENT INTO THE MODEL. For the KNN
-model, we set the number of neighbors hyperparameter to thhree, and for
+For predictors we used the Reddit score, up-votes, and down-votes each
+comment received at the time of the collection. Additionally, we used
+the keyword that was used to scrape these data along with the subreddit
+where the comment was posted. \textbf{DISCUSS ADDITIONAL FEATURE
+ENGINERRING SUCH AS TEXT EDITING THAT WENT INTO THE MODEL.} For the KNN
+model, we set the number of neighbors hyperparameter to three, and for
 the random forest, mtry was kept at a constant two as we did not have
 many features in these models. We took an 80/20 split for our
 training-testing sets that we used to train each model and evaluate.
 
 In addition to our supervised machine learning models, we also applied
-to our data two LLMs, llama 3.2. 3B and deepseek-r1:8b. The llama model,
-developed by Meta AI released in February 2023, was designed for
-applications requiring low-latency inferencing with limited
-computational resources, which means that we were able to also deploy
-these models on a local machine with a GPU in addition to using the
-\href{https://its.umich.edu/advanced-research-computing/}{Great Lakes
-HCP}. This model also excels at text classification which is how we used
-it to classify the stance for each comment. Deepseek, developed by Liang
-Wenfeng in July 2023 and based on the llama architecture, yet boosts
-efficiency improvements that appear to provide advances in reasoning,
-logic, while excelling at natural language processing. We choose both of
-these LLMs as candidates to test against our supervised approaches
-because of their ability to apply locally and reputable performance on
-zero-shot classification tasks. Both of these models received the same
-prompt and tasked which were developed by the research team to reflect
-the utility of classifying stance within our topic of interest. Both
-LLMs resulted in not being able to classify five comments each while
-they only had one in common with the likely reason being that these
-comments did not contain enough useful text for a stance to be derive.
+to our comments two LLMs, gemma 3.12 and llama 3.2. 3B. Gemma, was
+developed by Google and is based on Gemini, is able to generate text
+output using instruction-tuned prompts from the user, such as providing
+answers on a user specified task reviewing text. We deployed gemma on a
+higher performance computing cluster
+(\href{https://its.umich.edu/advanced-research-computing/}{Great Lakes
+HCP}) and processed text from Reddit comments on a GPU. We were also
+interested in deploying other lightweight LLMs locally on a machine with
+a dedicated-GPU and found llama, developed by Meta AI, to be an
+excellent candidate. Llama excels at text classification which is how we
+used it to classify the stance for each comment text given a user
+specified prompt. We choose both of these LLMs as candidates to test
+against our supervised approaches because of their ability to apply
+locally and reputable performance on zero-shot classification tasks.
+Both of these models received the same prompt and tasked which were
+developed by the research team to reflect the utility of classifying
+stance within our topic of interest.
 
-Prompt: ``Is this comment in `favor', `neutral', or `oppose' the
-reduction in federal workforce? Provide one word answer only!
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2222}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7778}}@{}}
+\toprule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+\textbf{Prompt}: & ``Is this comment in `favor', `neutral', or `oppose'
+the reduction in federal workforce? Provide one word answer only! \\
+\textbf{Task}: & ``You have assumed the role of a stakeholder that is
+presented with a reddit comment from a likely federal worker related to
+the current policies on reducing the federal workforce. Please determine
+the author's stance on this topic, and only provide the answer.'' \\
+\end{longtable}
 
-Task: ``You have assumed the role of a stakeholder that is presented
-with a reddit comment from a likely federal worker related to the
-current policies on reducing the federal workforce. Please determine the
-author's stance on this topic, and only provide the answer.''
-
-To evaluate model performance we used recall to determine how many of
-actual positive cases did the model correctly identify. High recall
-indicates that the model can correctly identify positive instances but
-is also optimistic and may incorrectly label cases as positive. The
-second performance metric we selected is precision, of all the items the
-model labels as positive how many are true positive, and high precision
-indicates that when the model predicts a case to be positive it is
-likely to be correct.
+We evaluate model performance using the F1-score which is a harmonic
+mean balance between precision and recall. This metric considers both
+the ability to correctly identify positive instances, known as recall,
+and the ability to avoid incorrectly labeling negative instances as
+positive (i.e., precision). A high F1-score indicates a model with well
+balanced recall and precision that both minimize false negativesand
+false positives. The second performance metric we used is recall, as
+this determines how many of the actual positive cases the model can
+correctly identify. Recall can be prone to incorrectly labeling negative
+cases as positive, suggesting more false positives, which is why we
+intereggoate on two performance metrics in this study.
 
 \section{Results}\label{results}
 
 Our machine learning models reveal a mix of performance results in
-classifying comments into one of three stance categories. Overall, the
-random forest model reduces the test misclassification error against
-KNN, yet not by much. The stance oppose tended to have the highest
-recall of the three with the random forest model having higher scores:
-Of all the oppose cases, the random forest model found 74 percent and
-the KNN 64 percent. For the neutral stance, the random forest captured 5
-percent and KNN 21 percent. While for the favor stance, the random
-forest identified 26 percent and KNN 16 percent (see Figure 1 for these
-results). Neither model excelled in how many of the stance categories
-identified were right as indicated by the precision scores. KNN slightly
-outperformed random forest on the oppose stance having correctly
-classified 56 percent vs random forest 51 percent or true oppose cases.
-For neutral the performance is worse with random forest correctly
-identified 50 percent and KNN 21 percent, and same for favor with random
-forest correctly identifying 29 percent and KNN 23 percent.
+classifying the stance of Reddit comment into favor, neutral, oppose.
+Both models exhibit low recall and F1-scores for the ``favor'' stance
+(see Figure 1), yet the random forest model (recall .26: f1-score .28)
+slightly outperforms KNN (recall .16: f1-score .19). The ``neutral''
+class presented a significant challenge for the random forest with very
+low scores (recall .05: f1-score .10), while KNN exhibited slightly
+better performance (recall .21: f1-score .21). Both models showed the
+strongest performance in identifying comments expressing opposition. The
+random forest correctly identified 74 percent of all the actual Reddit
+comments expressing opposition compared to KNN at 64 percent, meaning
+that KNN missed a larger proportion of true ``oppose'' comments. The
+f1-scores were similar for both models at 60 percent, this implies that
+KNN may have a slightly higher precision score given that it had a lower
+recall score than the random forest model. This implies that when KNN
+predicts comments for the ``oppose'' class, it is as likely as the
+random forest to be correct.
 
 \includegraphics{assign_3_files/figure-pdf/unnamed-chunk-3-1.pdf}
 
-We observe higher precision scores for the oppose stance when using the
-LLMs to classify stance positions. Of all the identified oppose stance
-cases these models identified, the percent of true oppose cases was 84
-percent for llama and 69 percent for deepseek. Similarly, of all the
-classified neutral stance classified by these models, the percent of
-true neutral cases was 21 percent for llama and 42 percent for deep
-seek. Finalkly, of all the identified favor stance, the percent of true
-favor cases was 4 percent for llama and 10 percent for deepseek (see
-Figure 2 for these results). Recall scores were worse for the oppose
-stance, and of all the oppose cases the llama model captured 56 percent
-and deepseek 60 percent. For the neutral stance, llama captured 25
-percent and deekseek 27 percent. Finally, for the favor stance, llama
-captured 29 percent and deekseek 32 percent.
-
-\hfill\break
+The LLMs, showed poor performance in classifying the ``favor'' stance,
+with very low f1-scores (llama .07: gemma .02) despite moderate recall
+(llama .29: gemma .33), indicating low precision (see Figure 2). For the
+``neutral'' class, both models showed modest results, with llama
+achieving a slightly better F1-score (.23) compared to gemma (0.18),
+although gemma had a higher recall (.50 vs .25), again suggesting lower
+precision for gemma. Similar to the supervised models, both LLMs
+performed best in classifying the ``oppose'' stance, with relatively
+high and similar F1-scores (llama .67: gemma .70) and comparable recall
+(llama .56: gemma .56), suggesting a better balance between precision
+and recall for this category. Both models correctly identify 67 to 70
+percent of all the actual Reddit comments expressing opposition.
+Overall, both LLMs struggled with the ``favor'' and ``neutral'' classes
+but demonstrated a stronger ability to identify opposing comments.\\
 
 \includegraphics{assign_3_files/figure-pdf/unnamed-chunk-5-1.pdf}
 
-Llama and DeepSeek demonstrated only fair agreement in stance
-classification (Cohen's Kappa = 0.344). The contingency table, Table 2
-below, reveals highest agreement for ``oppose'' (0.58), indicating some
-consistency in identifying strong negative sentiment. However, agreement
-was substantially lower for ``neutral'' (0.11) and ``favor'' (0.02),
+Gemma and llama demonstrated only fair agreement in stance
+classification (Cohen's Kappa = .24). The contingency table, Table 2
+below, reveals highest agreement for ``oppose'' (.80), indicating some
+consistency in identifying a strong negative stance. However, agreement
+was substantially lower for ``neutral'' (.03) and ``favor'' (.01),
 highlighting divergent interpretations of more nuanced language.
 Off-diagonal values further illustrate these discrepancies, suggesting
 fundamental differences in how the models process ambiguous cues and
@@ -357,7 +360,7 @@ establish classification boundaries, particularly for less extreme
 stances.
 
 \begin{longtable}[]{@{}lrrr@{}}
-\caption{Aggreement between LLMs, Cohens Kappa, 0.34}\tabularnewline
+\caption{Aggreement between LLMs, Cohens Kappa, 0.24}\tabularnewline
 \toprule\noalign{}
 & favor & neutral & oppose \\
 \midrule\noalign{}
@@ -368,38 +371,36 @@ stances.
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-favor & 6 & 7 & 1 \\
-neutral & 3 & 42 & 14 \\
-oppose & 29 & 61 & 228 \\
+favor & 3 & 1 & 10 \\
+neutral & 0 & 10 & 49 \\
+oppose & 0 & 5 & 317 \\
 \end{longtable}
 
 \section{Conclusion}\label{conclusion}
 
-We explored public sentimenton Reddit regarding the DOGE federal
+We explored public sentiment on Reddit regarding the DOGE federal
 workforce reduction using supervised learning (KNN, Random Forest) and
-unsupervised LLMs (Llama 3.2 3B, deepseek-r1:8b) for stance
-classification. LLMs showed higher precision for ``oppose'' comments,
-suggesting better identification of negative sentiment, but lower
-recall, indicating missed opposing comments. Supervised models performed
-consistently but generally poorly across all stances, and likely due to
-the limited feature set (Reddit metadata) as well as the small sample of
-comments.
+unsupervised LLMs ( gemma 3.12b and Llama 3.2 3B) for stance
+classification. Our supervised learning models achieved moderate success
+in this classification task, with the strongest performance in
+identifying opposing viewpoints, which were also the most prevalent in
+our labeled data. Moreover, both models struggled with the ``favor'' and
+``neutral'' stances, suggesting limitations in our initial features to
+capture these nuances. Our unsupervised learning models also showed the
+best ability to classify ``oppose'' comments, yet exhibited significant
+challenges with the ``favor'' and ``neutral'' categories, particularly
+demonstrating low precision.
 
-The consistent difficulty in classifying ``neutral'' and ``favor''
-stances across all models likely stems from class imbalance (more
-``oppose'' comments), the inherent ambiguity of neutral language, and
-potentially more nuanced expressions of favor. The zero-shot approach
-for LLMs might also limit their performance on this specific domain. The
-few unclassifiable comments highlight the inherent challenges in stance
-detection within informal online text.
-
-We conclude that while LLMs showed promise for identifying strong
-negative sentiment, accurately classifying the full spectrum of public
-opinion on Reddit regarding DOGE's actions remains challenging. Future
-research should focus on incorporating richer text-based features for
-supervised models, addressing class imbalance, and potentially
-fine-tuning LLMs to better capture the nuances of online sentiment and
-stance.
+This study had limitations such as the small size of our labelled
+dataset of 400 Reddit, imbalance in the stance categories, and few
+features in the supervised approach. The zero-shot capabilities of the
+LLMs are suitable for topic exploration but may require fine-tuning for
+optimal performance on this specific domain, particularly with nuance
+language used in ``favor'' comments. Future research should continue to
+understand federal worker perceptions and improve stance classification
+by expanding labeled dataset and incorporate more contextual text rather
+than single comment text. Fine tuning LLMs on a larger corpus with
+relevant comments could render more accuracy in the classification task.
 
 
 
