@@ -168,7 +168,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\date{April 8, 2025}
+\date{April 9, 2025}
 \title{\bf DOGE's Downsizing, Can AI Read the Reddit Room?}
 \author{
 Kevin Linares\\
@@ -186,10 +186,10 @@ University of Michigan\\
 We investigate public sentiment on Reddit regarding the Department of
 Government Efficiency's federal workforce reduction by classifying 400
 labeled comments (28\% favor, 18\% neutral, 54\% oppose) using
-supervised and unsupervised Large Language Models. Supervised models
-showed moderate success, particularly with ``oppose'' comments, but
-struggled with ``favor'' and ``neutral'' stances. Similarly, LLMs best
-identified ``oppose'' sentiment but exhibited low precision for
+supervised and unsupervised Large Language Models (LLM). Supervised
+models showed moderate success, particularly with ``oppose'' comments,
+but struggled with ``favor'' and ``neutral'' stances. Similarly, LLMs
+best identified ``oppose'' sentiment but exhibited low precision for
 ``favor'' and ``neutral.'' These findings highlight the challenges of
 accurately gauging nuanced public opinion on government policy changes
 using automated methods on social media data.
@@ -218,20 +218,32 @@ Additionally, we employ unsupervised large language models (LLM) to
 detect the stance of these Reddit comments from text, to further explore
 appropriate models for this current topic.
 
-\section{Methods}\label{sec-meth}
+\section{Method}\label{sec-meth}
 
-\emph{Data}. We collected Reddit comments from subreddits related to the
-topic of interest in early March of 2024. This resulted in 12,553
-comments which we preprocessed by removing web-URLs, replace special
-characters (i.e., replaced ``@'' with ``at''), replaced numeric values
-with their spelling, and confirmed the absence of duplicate comments. We
-then randomly selected 400 comments (without replacement) and assigned
-them to four graduate students for coding, categorizing each comment as
-favoring, opposing, or neutral towards DOGE's approach to federal
-workforce reductions. Table 1 presents the breakdown in percent of our
-the comments we labelled and later use to train and evaluate our machine
-learning models. A review of the comments revealed more negative
-opinionated statements and reactions.
+We collected a total of 12,553 Reddit comments in early March 2024 from
+subreddits relevant to the topic of interest. These comments were
+retrieved using keyword-based queries designed to capture posts of
+discussions that would reflect users' stances on the federal workforce
+reduction by DOGE. To prepare the data for analysis, a comprehensive
+preprocessing pipline were conducted in Pytho 3. This process involved
+removing HTML tags and web-URLs, stripping special characters and
+tagging artifacts such as ``@'', and replacing emojis with textual
+descriptions. Also, it entailed eliminating punctuations and converting
+numerical values into their spelled-out forms. The text was standardized
+to lowercase, lemmatized using the SpaCy library, and further refined by
+removing stopwords per the Natural Language Toolkit (NLTK) lists.
+Spelling corrections were performed to improve textual coherence, while
+Duplicate comments were identified and removed to maintain data
+integrity.
+
+From this cleaned dataset, 400 uniqe comments without replacement were
+randomly sampled for manual annotation. Four graudate students
+independently coded and labeled each comment with one of three possible
+stances:favor, opopose, or neutral toward DOGE's approach to federal
+workforce reductions. As shown in Table 1, there were 28\% favor, 18\%
+neutral, and 54\% oppose. These labeled comments were subsequently used
+for training and evaluating both supervised and unsupervised
+classification models.
 
 \begin{longtable}[]{@{}lr@{}}
 \caption{Distribution of labeled Reddit comment data.}\tabularnewline
@@ -250,41 +262,56 @@ neutral & 18 \\
 oppose & 54 \\
 \end{longtable}
 
-We built two supervised machine learning models--K-nearest neighbor and
-random forest--to classify Reddit comments concerning stance on the
-current reduction in federal workforce into favor, oppose, or neutral.
-For predictors we used the Reddit score, up-votes, and down-votes each
-comment received at the time of the collection. Additionally, we used
-the keyword that was used to scrape these data along with the subreddit
-where the comment was posted. \textbf{DISCUSS ADDITIONAL FEATURE
-ENGINERRING SUCH AS TEXT EDITING THAT WENT INTO THE MODEL.} For the KNN
-model, we set the number of neighbors hyperparameter to three, and for
-the random forest, mtry was kept at a constant two as we did not have
-many features in these models. We took an 80/20 split for our
-training-testing sets that we used to train each model and evaluate.
+The feature set used in model training and evluation consisted of two
+primary categories: metadata features and textual features. Metadata
+features included the Reddit comment's score, the subreddit in which it
+appeared in, and the search term that retrieved it. As the variables for
+score and upvotes were perfectly collinear in this dataset, only the
+score was retained. To ensure all values were non-negative, the score
+was adjusted by subtracting the dataset's minimum value from each score.
+The categorical variables, subreddit and search term, were numerically
+encoded using scikit-learn's label encoder.
 
-In addition to our supervised machine learning models, we also applied
-to our comments two LLMs, gemma 3.12 and llama 3.2. 3B. Gemma, was
-developed by Google and is based on Gemini, is able to generate text
-output using instruction-tuned prompts from the user, such as providing
-answers on a user specified task reviewing text. We deployed gemma on a
-higher performance computing cluster
-(\href{https://its.umich.edu/advanced-research-computing/}{Great Lakes
-HCP}) and processed text from Reddit comments on a GPU. We were also
-interested in deploying other lightweight LLMs locally on a machine with
-a dedicated-GPU and found llama, developed by Meta AI, to be an
-excellent candidate. Llama excels at text classification which is how we
-used it to classify the stance for each comment text given a user
-specified prompt. We choose both of these LLMs as candidates to test
-against our supervised approaches because of their ability to apply
-locally and reputable performance on zero-shot classification tasks.
-Both of these models received the same prompt and tasked which were
-developed by the research team to reflect the utility of classifying
-stance within our topic of interest.
+Textual features were derived from each comment and represented using
+two distinct approaches: unigram term frequency and term
+freuqency-inverse document frequency (TF-IDF). The unigram used a
+bag-of-words model to represent each word as a feature based on its
+frequency in comment. The TF-IDF transformation built upon these raw
+counts by accounting for term importance across the corpus. For both
+unigram and TF-IDF methods, the total number of text-derived features
+was 2,102. Combined with the three metadata features, each dataset
+contained a total of 2,105 features. Two datasets were constructed for
+classification: one combining the metadata with unigram features, and
+another with metadat and TF-IDF features. Each dataset was divded into
+80\% training data and 20\% test data. All supervised learning models
+were implemented using Python 3, with scikit-learn and XGBoost as the
+primary machine learning (ML) techniques. Classification was conducted
+using a diverse set of algorithms, including Extra Trees Classifier,
+Random Forest Classifier, Logistic Regression, Ridge Classifier,
+K-Nearest Neightbors (KNN), Nearest Centroid, Multi-layer Perceptron
+Classifier, Bernoulli Naive Bayes, Multino- mial Naive Bayes, Linear
+Support Vector Classifier, Decision Tree Classifier, Extra Tree
+Classifier, and the XGBoost Classifier.
+
+All models were trained using default hyperparameter confiurations. The
+number of neighbors for KNN model was set to three, and the mtry
+parameter for Random Forrest was fixed at two, reflecting the relatively
+small number of metadata features in those models. All experiments were
+conducted on a personal computer without the use of a GPU
+
+In addition to traditional supervised models, we employed two
+instruction-tuned LLMs to perform zero- shot classification: Gemma
+3.12B, developed by Google and based on the Gemini framework, and LLaMA
+3.2B, developed by Meta AI. Gemma was deployed using the Great Lakes
+High-Performance Computing (HPC) cluster, while LLaMA was deployed
+locally on a GPU-enabled personal workstation using the rollama r
+pacakge. These models were selected for their strong zero-shot
+classification capabilities and ability to be run locally or on cluster
+environments without reliance on commercial APIs.
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2222}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7778}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2500}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7500}}@{}}
 \toprule\noalign{}
 \endhead
 \bottomrule\noalign{}
@@ -297,17 +324,15 @@ the current policies on reducing the federal workforce. Please determine
 the author's stance on this topic, and only provide the answer.'' \\
 \end{longtable}
 
-We evaluate model performance using the F1-score which is a harmonic
-mean balance between precision and recall. This metric considers both
-the ability to correctly identify positive instances, known as recall,
-and the ability to avoid incorrectly labeling negative instances as
-positive (i.e., precision). A high F1-score indicates a model with well
-balanced recall and precision that both minimize false negativesand
-false positives. The second performance metric we used is recall, as
-this determines how many of the actual positive cases the model can
-correctly identify. Recall can be prone to incorrectly labeling negative
-cases as positive, suggesting more false positives, which is why we
-intereggoate on two performance metrics in this study.
+The model performance was evaluated by the F1-score and recall. The
+F1-score, a harmonic mean of precision and recall, serves as a balanced
+indicator of a model's ability to correctly identify relevant instances
+while minimizing both false positives and false negatives. Recall was
+also independently assessed to evaluate the proportion of true postive
+cases accurately identified by each model. While a high recall may
+increase the risk of false positives, its combination with the F1-score
+allows a more robust evaluation of model performance, especially for
+addressing the challenges inherent in imbalanced classification tasks
 
 \section{Results}\label{results}
 
