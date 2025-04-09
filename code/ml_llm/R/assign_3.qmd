@@ -75,8 +75,8 @@ llm_results <- llama_results |>
 The newly formed Department of Government Efficiency (DOGE) has reduced the federal workforce by almost 280,000 employees, a central pledge of the current administration.
 This action has generated significant apprehension among federal workers in regards to mental health and job security.
 To understand the impact of DOGE's actions on federal worker perceptions of job security, we labeled 400 Reddit comments on topics related to the current reduction in federal workforce by DOGE as whether the author favored, opposed, or had a neutral stance.
-We use these labels to build supervised learning models to predict stance.
-Additionally, we employ unsupervised large language models (LLMs) to detect the stance of these Reddit comments from text, to further explore appropriate models for this current topic.
+We used these labels to build supervised learning models to predict stance.
+Additionally, we employed unsupervised large language models (LLMs) to detect the stance of these Reddit comments from text, to further explore appropriate models for this current topic.
 
 ## Method {#sec-meth}
 
@@ -245,8 +245,8 @@ metric_results |>
 ```
 
 Gemma and Llama demonstrated only fair agreement in stance classification (Cohen's Kappa = .24).
-The contingency table ( see Table 3) reveals the highest agreement for "oppose" (.80), indicating some consistency in identifying a strong negative stance.
-However, agreement was substantially lower for "neutral" (.03) and "favor" (.01), highlighting the divergent interpretations of more nuanced language.
+The contingency table ( see Table 2) reveals the highest agreement for "oppose" (.80), indicating some consistency in identifying a strong negative stance.
+However, the agreement was substantially lower for "neutral" (.03) and "favor" (.01), highlighting the divergent interpretations of more nuanced language.
 The off-diagonal values further illustrates these discrepancies, suggesting the fundamental differences in how the models process ambiguous cues and establish classification boundaries, particularly for less extreme stances.
 
 ```{r}
