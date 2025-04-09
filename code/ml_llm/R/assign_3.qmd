@@ -127,8 +127,6 @@ In addition to traditional supervised models, we employed two instruction-tuned 
 These models were selected for their strong zero-shot classification capabilities and ability to be run locally or on cluster environments without reliance on commercial APIs.
 Both models were given the same prompt and tasks, which were developed by the research team to assess the effectiveness of classifying stance within our topic of interest (see Table 2).
 
-\
-
 Table 2.
 Example of Prompt and Task for LLMs
 
