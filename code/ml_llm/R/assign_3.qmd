@@ -152,7 +152,7 @@ This implies that when KNN predicts comments for the "oppose" class, its accurac
 
 ```{r}
 #| fig-width: 7
-#| fig-height: 6
+#| fig-height: 5
 #| 
 # number of total posts
 ml_results |> 
@@ -176,6 +176,8 @@ ml_results |>
   theme_hc()
 
 ```
+
+\newpage
 
 The LLMs, showed poor performance in classifying the "favor" stance, with very low F1-scores (Llama .07: Gemma .02) despite moderate recall (Llama .29: Gemma .33), indicating low precision (see Figure 2).
 For the "neutral" class, both models showed modest results, with Llama achieving a slightly better F1-score (.23) compared to Gemma (.18), although Gemma had a higher recall (Gemma .50: Llama .25), again suggesting lower precision for Gemma.
@@ -223,7 +225,7 @@ gemma_metrics <- cm_metric_fun(
 
 ```{r}
 #| fig-width: 7
-#| fig-height: 6
+#| fig-height: 4.75
 #| 
 metric_results |> 
   filter(metric %in% c("F1", "Recall")) |> 
