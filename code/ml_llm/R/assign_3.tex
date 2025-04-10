@@ -181,7 +181,7 @@
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\date{April 9, 2025}
+\date{April 10, 2025}
 \title{\bf DOGE's Downsizing, Can AI Read the Reddit Room?}
 \author{
 Kevin Linares\\
@@ -200,7 +200,7 @@ We investigated public sentiment on Reddit regarding the Department of
 Government Efficiency's federal workforce reduction by classifying 400
 labeled comments (28\% favor, 18\% neutral, 54\% oppose) using
 supervised and unsupervised Large Language Models (LLMs). It turned out
-that supervised models showed low to moderate success, particularly with
+that supervised models showed low-moderate success, particularly with
 ``oppose'' comments, but struggled with ``favor'' and ``neutral''
 stances. Similarly, LLMs best intent identified ``oppose'' sentiment but
 exhibited low precision for ``favor'' and ``neutral.'' These findings
@@ -222,30 +222,29 @@ the current administration. This action has generated significant
 apprehension among federal workers in regards to mental health and job
 security. To understand the impact of DOGE's actions on federal worker
 perceptions of job security, we labeled 400 Reddit comments on topics
-related to the current reduction in federal workforce by DOGE as whether
-the author favored, opposed, or had a neutral stance. We use these
-labels to build supervised learning models to predict stance.
-Additionally, we employ unsupervised large language models (LLMs) to
-detect the stance of these Reddit comments from text, to further explore
-appropriate models for this current topic.
+related to the current reduction in workforce as whether the author
+favored, opposed, or had a neutral stance. We used these labels to build
+supervised learning models to predict stance. Additionally, we employed
+unsupervised large language models (LLMs) to detect the stance of these
+Reddit comments from text, to further explore appropriate models for
+this current topic.
 
 \section{Method}\label{sec-meth}
 
-We collected a total of 12,553 Reddit comments in early March 2024 from
-subreddits relevant to the topic of interest. These comments were
-retrieved using keyword-based queries designed to capture posts of
-discussions that would reflect users' stances on the federal workforce
-reduction by DOGE. To prepare the data for analysis, a comprehensive
-preprocessing pipeline was conducted in Python 3. This process involved
-removing HTML tags and web-URLs, stripping special characters and
-tagging artifacts such as ``@'', and replacing emojis with textual
-descriptions. Also, it entailed eliminating punctuations and converting
-numerical values into their spelled-out forms. The text was standardized
-to lowercase, lemmatized using the SpaCy library, and further refined by
-removing stopwords per the Natural Language Toolkit (NLTK) lists.
-Spelling corrections were performed to improve textual coherence, while
-duplicate comments were identified and removed to maintain data
-integrity.
+We collected 12,553 Reddit comments earlier this March from subreddits
+relevant to the topic of interest. These comments were retrieved using
+keyword-based queries designed to capture discussion posts reflecting
+users' stances on the federal workforce reduction by DOGE. To prepare
+the data for analysis, a comprehensive preprocessing pipeline was
+conducted in Python 3. This process involved removing HTML tags and
+web-URLs, stripping special characters and tagging artifacts such as
+``@'', and replacing emojis with textual descriptions. Also, it entailed
+eliminating punctuations and converting numerical values into their
+spelled-out forms. The text was standardized to lowercase, lemmatized
+using the SpaCy library, and further refined by removing stopwords per
+the Natural Language Toolkit (NLTK) lists. Spelling corrections were
+performed to improve textual coherence, while duplicate comments were
+identified and removed to maintain data integrity.
 
 From this cleaned dataset, 400 unique comments without replacement were
 randomly sampled for manual annotation. Four graduate students
@@ -304,30 +303,28 @@ Classifier, Bernoulli Naive Bayes, Multino- mial Naive Bayes, Linear
 Support Vector Classifier, Decision Tree Classifier, Extra Tree
 Classifier, and the XGBoost Classifier.
 
-All models were trained using default hyperparameter configurations. The
-number of neighbors for KNN model was set to three, and the mtry
-parameter for Random Forrest was fixed at two, reflecting the relatively
-small number of metadata features in those models. All experiments were
-conducted on a personal computer without the use of a GPU
+All models were trained on a local machine with only the CPU using
+default hyperparameter configurations. The number of neighbors for KNN
+model was set to three, and the mtry parameter for Random Forrest was
+fixed at two, reflecting the relatively small number of metadata
+features in those models.
 
-In addition to traditional supervised models, we employed two
-instruction-tuned LLMs to perform zero- shot classification: Gemma
+We also employed two LLMs to perform zero-shot classification: Gemma
 3.12B, developed by Google and based on the Gemini framework, and LLaMA
 3.2B, developed by Meta AI. Gemma was deployed using the Great Lakes
 High-Performance Computing (HPC) cluster, while LLaMA was deployed
-locally on a GPU-enabled personal workstation using the rollama
-r-pacakge. These models were selected for their strong zero-shot
-classification capabilities and ability to be run locally or on cluster
-environments without reliance on commercial APIs. Both models were given
-the same prompt and tasks, which were developed by the research team to
-assess the effectiveness of classifying stance within our topic of
-interest (see Table 2).
+locally on a dedicated-GPU using the rollama r-package. These models
+were selected for their strong zero-shot classification capabilities and
+ability to be run locally or on cluster environments without reliance on
+commercial APIs. Both models were given the same prompt and tasks, which
+were developed by the research team to assess the effectiveness of
+classifying stance within our topic (see Table 2).
 
 Table 2. Example of Prompt and Task for LLMs
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2778}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7222}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.3056}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.6944}}@{}}
 \toprule\noalign{}
 \endhead
 \bottomrule\noalign{}
@@ -395,13 +392,13 @@ opposing comments.\\
 Gemma and Llama demonstrated only fair agreement in stance
 classification (Cohen's Kappa = .24). The contingency table ( see Table
 3) reveals the highest agreement for ``oppose'' (.80), indicating some
-consistency in identifying a strong negative stance. However, agreement
-was substantially lower for ``neutral'' (.03) and ``favor'' (.01),
-highlighting the divergent interpretations of more nuanced language. The
-off-diagonal values further illustrates these discrepancies, suggesting
-the fundamental differences in how the models process ambiguous cues and
-establish classification boundaries, particularly for less extreme
-stances.
+consistency in identifying a strong negative stance. However, the
+agreement was substantially lower for ``neutral'' (.03) and ``favor''
+(.01), highlighting the divergent interpretations of more nuanced
+language. The off-diagonal values further illustrates these
+discrepancies, suggesting the fundamental differences in how the models
+process ambiguous cues and establish classification boundaries,
+particularly for less extreme stances.
 
 \begin{longtable}[]{@{}lrrr@{}}
 \caption{Aggreement Between LLMs, Cohen's Kappa, 0.24}\tabularnewline
@@ -422,18 +419,17 @@ oppose & 0 & 5 & 317 \\
 
 \section{Conclusion}\label{conclusion}
 
-Public sentiment on Reddit were explored in terms of the DOGE federal
-workforce reduction through supervised learning (KNN, Random Forest) and
-unsupervised LLMs ( Gemma 3.12b and Llama 3.2 3B) for stance
-classifications. Our supervised learning models overall achieved low to
-moderate success in this classification task, with the strongest
-performance in identifying opposing viewpoints, which were also the most
-prevalent in our labeled data. Moreover, both models struggled with the
-``favor'' and ``neutral'' stances, suggesting limitations in our
-features to capture these nuances. Our unsupervised learning models also
-showed the best ability to classify ``oppose'' comments, yet exhibited
-significant challenges with the ``favor'' and ``neutral'' categories,
-particularly demonstrating low precision.
+We explored public sentiment of DOGE's federal workforce reduction
+through supervised learning (KNN, Random Forest) and unsupervised LLMs (
+Gemma 3.12b and Llama 3.2 3B) for stance classifications. Our supervised
+learning models achieved low-moderate success in this classification
+task, with the strongest performance in identifying opposing viewpoints.
+Moreover, both models struggled with the ``favor'' and ``neutral''
+stances, suggesting limitations in our features to capture these
+nuances. Our unsupervised learning models also showed the best ability
+to classify ``oppose'' comments, yet exhibited significant challenges
+with the ``favor'' and ``neutral'' categories, particularly
+demonstrating low precision.
 
 This study had limitations such as the small size of our labelled
 dataset of 400 Reddit comments, the imbalance in the stance categories,
